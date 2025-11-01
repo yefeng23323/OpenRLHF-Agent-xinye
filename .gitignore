@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Packaging / distribution artifacts
+build/
+dist/
+downloads/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+openrlhf_agent.egg-info/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing / coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# IDEs / editors
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Model / training outputs
+checkpoints/
+outputs/
+logs/
+exp/
+*.ckpt
+*.pt
+*.bin
+
