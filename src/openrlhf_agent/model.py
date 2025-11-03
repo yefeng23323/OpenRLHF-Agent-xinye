@@ -1,10 +1,22 @@
 import os
+from typing import List, Optional, Tuple, Union
+
 import httpx
-
 from openai import OpenAI
-from typing import List, Optional, Union, Tuple
 
-from .base import LLMEngine
+
+class LLMEngine:
+    def generate(
+        self,
+        prompt: Optional[Union[str, List[int]]],
+        max_tokens: int = 10240,
+        temperature: float = 0.6,
+        stream: bool = False,
+    ) -> Tuple[List[int], str]:
+        raise NotImplementedError
+
+    def tokenize(self, prompt: str) -> List[int]:
+        raise NotImplementedError
 
 
 class OpenAIEngine(LLMEngine):
@@ -25,7 +37,7 @@ class OpenAIEngine(LLMEngine):
 
         # A temporary client for tokenization
         self.tmp_client = OpenAI(
-            base_url='/'.join(self.base_url.split('/')[:-1]),
+            base_url="/".join(self.base_url.split("/")[:-1]),
             api_key=self.api_key,
         )
 
@@ -44,12 +56,12 @@ class OpenAIEngine(LLMEngine):
             stream=stream,
             extra_body={
                 "return_token_ids": True,
-            }
+            },
         )
         token_ids = response.choices[0].token_ids
         text = response.choices[0].text
         return token_ids, text
-    
+
     def tokenize(self, prompt: str) -> List[int]:
         response = self.tmp_client.post(
             "/tokenize",
@@ -63,3 +75,7 @@ class OpenAIEngine(LLMEngine):
         return response["tokens"]
 
 
+__all__ = [
+    "LLMEngine",
+    "OpenAIEngine",
+]

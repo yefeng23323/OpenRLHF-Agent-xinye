@@ -1,9 +1,4 @@
-from openrlhf_agent.runtime import (
-    AgentRuntime,
-    OpenAIEngine,
-)
-from openrlhf_agent.environment import make_environment
-from openrlhf_agent.template import make_template
+from openrlhf_agent import AgentRuntime, OpenAIEngine, make_environment, make_template
 
 if __name__ == "__main__":
     engine = OpenAIEngine(
