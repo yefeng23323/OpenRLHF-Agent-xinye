@@ -1,33 +1,43 @@
 # OpenRLHF-Agent
 
-> Minimal runtime primitives that keep OpenRLHF training and inference in sync.
+> Consistent training and inference stack for building tool-using chat agents on OpenRLHF and vLLM.
 
-OpenRLHF-Agent focuses on a tiny, readable surface. One runtime (`AgentRuntime`) powers both vLLM-style inference and OpenRLHF reinforcement learning so you do not need parallel implementations.
+OpenRLHF-Agent provides a shared runtime that covers environment orchestration, prompt templates, and model I/O for both RL training and production inference. Teams can prototype an agent policy with OpenRLHF, then ship the same codepath behind a chatbot powered by vLLM or any OpenAI-compatible endpoint.
 
 ## ✨ Highlights
 
-- **One codepath** for OpenRLHF + inference deployments.
-- **Small module set**: a single file each for runtime, environment, template, LLM wrapper, and shared types.
-- **Tool-driven UX**: ships with `think` / `final` helpers for fast experimentation.
-- **Example-first**: Qwen-3 demo and RL harness ready to run.
+- **Training and inference stay aligned**: the identical `AgentSession` flow drives resets, tool calls, and transcript rendering across phases.
+- **Lean agent primitives**: a minimal set of modules (`AgentRuntime`, `Environment`, `Template`, `LLMEngine`, and shared `types`) makes the runtime easy to audit and extend.
+- **Tool-centric design**: bundled `think` and `final` helpers demonstrate ReAct-style loops out of the box.
+- **Production-ready examples**: Qwen-3 samples cover inference serving, RL data collection, and REINFORCE++ training.
+- **Optimized for OpenRLHF**: plug `AgentRuntime` into `train_reinforce_agent.sh` or Ray jobs without extra glue code.
 
-## 🧱 How it fits together
+## 🧭 Why this matters
+
+Chat assistants are shifting from passive Q&A toward autonomous task execution. Leading providers now expose agent modes that plan actions, invoke tools, and maintain long-lived context. OpenRLHF-Agent focuses on the engineering glue needed to keep those behaviors consistent between experimentation and deployment. Use it to:
+
+- Iterate on multi-step reasoning policies with reward shaping and safety hooks before you ship.
+- Connect the same prompt strategy to live inference endpoints without rewriting tool logic.
+- Extend agents with memory stores, search APIs, or enterprise tools while staying within a single runtime abstraction.
+
+## 🧱 Architecture
 
 ```
 AgentRuntime
- ├─ Template (renders prompts, parses <tool_call>)
- ├─ Environment (tools, rewards, stop rules)
- └─ LLMEngine (model client; default OpenAI-compatible)
+ ├─ AgentSession  (shared rollouts for training + inference)
+ ├─ Template      (prompt rendering, tool parsing)
+ ├─ Environment   (state, rewards, tool registry)
+ └─ LLMEngine     (token streaming via OpenAI/vLLM/custom)
 ```
 
-Key modules (all under `src/openrlhf_agent/`):
+### Where the pieces live
 
-- `agent.py` – runtime/session orchestration.
-- `environment.py` – default environment + tool helpers.
-- `template.py` – Qwen-3 chat template implementation.
-- `model.py` – OpenAI-compatible engine base.
-- `types.py` – lightweight dataclasses for tool calls/results.
-- `examples/qwen3/` – inference demo & OpenRLHF training glue.
+- `src/openrlhf_agent/agent.py`: runtime loop, `AgentRuntime`, and `AgentSession` orchestration.
+- `src/openrlhf_agent/environment.py`: default environment, tool registry, reward hooks, and tool base classes.
+- `src/openrlhf_agent/template.py`: prompt builders, `<tool_call>` parsing, and template factory helpers.
+- `src/openrlhf_agent/model.py`: OpenAI-compatible `LLMEngine` base and the default HTTP client.
+- `src/openrlhf_agent/types.py`: lightweight dataclasses shared across components.
+- `examples/qwen3/`: runnable demos for inference and reinforcement learning.
 
 ## 🚀 Quick start
 
@@ -39,19 +49,21 @@ cd OpenRLHF-Agent
 pip install -e .
 # optional extras
 pip install -e .[dev]        # linting & tests
-pip install -e .[openrlhf]   # pulls OpenRLHF core
+pip install -e .[openrlhf]   # pulls OpenRLHF core packages
 ```
 
 Runtime dependencies are also listed in `requirements.txt` if you prefer `pip install -r requirements.txt`.
 
 ### 2. (Optional) launch vLLM
 
-`examples/qwen3/run_vllm.sh` starts a Qwen-3 endpoint:
+Install vLLM (e.g. `pip install vllm>=0.10.2`) and start the Qwen-3 endpoint via `examples/qwen3/run_vllm.sh`, or run it manually:
 
 ```bash
 vllm serve Qwen/Qwen3-4B-Instruct-2507 \
   --port 8009 \
-  --served-model-name qwen
+  --served-model-name qwen \
+  --tensor-parallel-size 4 \
+  --gpu-memory-utilization 0.8
 ```
 
 ### 3. Run the inference demo
@@ -62,55 +74,55 @@ python examples/qwen3/runtime_demo.py
 
 The script wires together:
 
-- `OpenAIEngine` (points at a vLLM/OpenAI endpoint)
-- `make_environment()` (default think/final tools + reward logic)
-- `make_template("qwen3")`
+- `OpenAIEngine` pointing at a vLLM/OpenAI-compatible endpoint.
+- `DefaultEnvironment` with `think` / `final` tools and feedback hooks.
+- `make_template("qwen3")` for prompt rendering and `<tool_call>` parsing.
+
+You will see tool traces and the final answer printed to the console.
 
 ### 4. Plug into OpenRLHF training
 
-`examples/qwen3/agent_func.py` exposes the required `AgentInstance` / `AgentExecutor` hooks for OpenRLHF. Call via `train_reinforce_agent.sh` after exporting your dataset path.
+`examples/qwen3/agent_func.py` exposes the `AgentInstance` / `AgentExecutor` hooks required by OpenRLHF. Run `examples/qwen3/train_reinforce_agent.sh` (set `DATASET_PATH`) or integrate the functions into your own Ray jobs to collect trajectories and train policies.
 
-## 🛠️ Customize it
+## 🛠️ Customize the stack
 
 ### Add a tool
 
-```python
-from openrlhf_agent.environment import ToolBase, DefaultEnvironment
-
-class SearchTool(ToolBase):
-    name = "search"
-    description = "Query documentation."
-    parameters = [{"name": "query", "type": "string", "required": True}]
-
-    def call(self, context, **kwargs):
-        return lookup(kwargs["query"])
-
-env = DefaultEnvironment()
-env.registry.register(SearchTool())
-```
+1. Subclass `ToolBase` from `environment.py`.
+2. Implement `call(self, context, **kwargs)` to return visible output or structured JSON.
+3. Register the tool on your environment (`env.registry.register(...)`) before starting the runtime.
 
 ### Tailor the environment
 
-Subclass `Environment` or wrap `DefaultEnvironment` to:
+- Override `reward_hook` for domain-specific scoring.
+- Extend `step` to orchestrate multiple tool calls or enforce guardrails.
+- Emit hidden hints through `_internal_obs` to steer the policy between turns.
 
-- override `reward_hook`
-- adjust `max_steps`
-- customize `_internal_obs` messaging for guardrails
+### Ship a new prompt template
 
-### Swap prompt formatting
+- Subclass `Template` in `template.py`.
+- Implement render + parse helpers for your prompt style.
+- Expose it via `make_template` and pass it into `AgentRuntime`.
 
-Create a new `Template` implementation and expose it through `make_template`. Only three methods are required: `render_system`, `render_turn`, and `extract_tool_calls_from_text`.
+### Support another engine
 
-### Talk to a different model backend
+- Subclass `LLMEngine` in `model.py`.
+- Implement `generate` and `tokenize` for your provider.
+- Instantiate the engine and supply it to `AgentRuntime`.
 
-Subclass `LLMEngine` (in `model.py`) and override `generate` + `tokenize`. Pass your engine into `AgentRuntime`.
+## 🌅 Project vision
 
-## 📂 Project layout
+OpenRLHF-Agent is the open-source bridge between RLHF-style training loops and production-grade agent deployments. By aligning tool schemas, prompts, and environment contracts, it lowers the barrier for teams that want to:
+
+- Train agents with reward-driven planning, self-monitoring, and safety checks.
+- Deploy those agents behind proactive chat products without reimplementing logic.
+- Experiment with emerging agent patterns (long-term memory, hierarchical planners, multi-agent collaboration) while keeping a maintainable codebase.
+
+## 📂 Repository layout
 
 ```
 OpenRLHF-Agent/
 ├── src/openrlhf_agent/
-│   ├── __init__.py
 │   ├── agent.py
 │   ├── environment.py
 │   ├── model.py
@@ -125,10 +137,11 @@ OpenRLHF-Agent/
 
 ## 🤝 Contributing
 
-1. Fork & clone the repo.
-2. `pip install -e .[dev]`
-3. Run `ruff`, `mypy`, and `pytest` (or the demos) before opening a PR.
-4. Describe behaviour changes and test coverage in your PR description.
+1. Fork and clone the repo.
+2. Install dev dependencies: `pip install -e .[dev]`.
+3. Run `ruff`, `mypy`, and `pytest` (or the demos) before submitting.
+4. Confirm the Qwen-3 training and inference demos still run.
+5. Open a PR summarizing behaviour changes and test coverage.
 
 ## 📄 License
 
