@@ -5,8 +5,8 @@ import re
 from textwrap import dedent
 from typing import ClassVar, List
 
+from openrlhf_agent.core import ParsedAssistantAction, ToolCall
 from openrlhf_agent.template.base import Template
-from openrlhf_agent.types import ParsedAssistantAction, ToolCall
 
 
 # Mirrors the upstream Qwen3 chat formatting rules.
@@ -53,12 +53,9 @@ QWEN3_CHAT_TEMPLATE = dedent("""\
                 {%- set content = content.split('</think>')[-1].lstrip('\\n') %}
             {%- endif %}
         {%- endif %}
-        {%- if loop.index0 > ns.last_query_index %}
-            {%- if loop.last or (not loop.last and reasoning_content) %}
-                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}
-            {%- else %}
-                {{- '<|im_start|>' + message.role + '\\n' + content }}
-            {%- endif %}
+        {%- set reasoning_text = reasoning_content.strip('\\n') if reasoning_content else '' %}
+        {%- if loop.index0 > ns.last_query_index and reasoning_text %}
+            {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_text + '\\n</think>\\n\\n' + content.lstrip('\\n') }}
         {%- else %}
             {{- '<|im_start|>' + message.role + '\\n' + content }}
         {%- endif %}
@@ -121,7 +118,7 @@ class Qwen3InstructTemplate(Template):
         tool_calls: List[ToolCall] = []
 
         cursor = 0
-        for idx, match in enumerate(self.tool_call_regex.finditer(raw)):
+        for idx, match in enumerate(self.tool_call_regex.finditer(raw), 1):
             start, end = match.span()
             content_parts.append(raw[cursor:start])
             payload = match.group("body").strip()
@@ -129,14 +126,7 @@ class Qwen3InstructTemplate(Template):
             cursor = end
 
         content_parts.append(raw[cursor:])
-        content = "".join(content_parts)
-
-        if tool_calls and content:
-            return ParsedAssistantAction(
-                content=content,
-                tool_calls=tool_calls,
-                refusal="tool call error: remove plain text when returning tool calls.",
-            )
+        content = "".join(content_parts).strip()
 
         return ParsedAssistantAction(content=content, tool_calls=tool_calls)
 
@@ -173,10 +163,7 @@ if __name__ == "__main__":
                 {
                     "id": "call_0",
                     "type": "function",
-                    "function": {
-                        "name": "get_mars_fact",
-                        "arguments": {"topic": "volcanoes"},
-                    },
+                    "function": {"name": "get_mars_fact", "arguments": {"topic": "volcanoes"}},
                 }
             ],
         },

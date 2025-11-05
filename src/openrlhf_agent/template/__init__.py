@@ -2,8 +2,8 @@
 
 from typing import Dict, Optional, Type
 
-from .base import Template
-from .qwen3_instruct import Qwen3InstructTemplate
+from openrlhf_agent.template.base import Template
+from openrlhf_agent.template.qwen3_instruct import Qwen3InstructTemplate
 
 
 _DEFAULT_TEMPLATE = "qwen3_instruct"

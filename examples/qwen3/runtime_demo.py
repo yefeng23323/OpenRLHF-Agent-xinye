@@ -10,7 +10,6 @@ if __name__ == "__main__":
     template = make_template(name="qwen3_instruct")
 
     rt = AgentRuntime(engine, env, template)
-    # messages = [{"role": "user", "content": "Tell me a joke about programming."}]
-    messages = [{"role": "user", "content": "思考，然后给我讲个笑话"}]
+    messages = [{"role": "user", "content": "Tell me a joke about programming."}]
     for step in rt.run_steps(messages):
         print(step)

@@ -5,7 +5,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Sequence
 
 from jinja2 import Environment
 
-from openrlhf_agent.types import ParsedAssistantAction
+from openrlhf_agent.core import ParsedAssistantAction
 
 
 class Template(ABC):
@@ -13,6 +13,7 @@ class Template(ABC):
 
     chat_template: ClassVar[Optional[str]] = None
     _jinja_env: ClassVar[Environment] = Environment(autoescape=False, trim_blocks=True, lstrip_blocks=True)
+    _jinja_env.policies["json.dumps_kwargs"] = {**_jinja_env.policies.get("json.dumps_kwargs", {}), "ensure_ascii": False,}
     _compiled_chat_template: ClassVar[Optional[Any]] = None
     _compiled_source: ClassVar[Optional[str]] = None
 

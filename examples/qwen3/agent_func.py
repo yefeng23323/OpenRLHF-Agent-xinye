@@ -12,18 +12,15 @@ logger.setLevel(logging.INFO)
 
 class AgentInstance(AgentInstanceBase):
     async def __init__(self, *args, **kwargs):
-        self.step_idx = 0
         environment = make_environment(name="default")
         template = make_template("qwen3")
         self.session = AgentSession(environment, template)
 
     async def reset(self, states: dict, **kwargs):
-        self.step_idx = 0
-        self.session.initialize_prompt(states.get("observation"))
-
-        system_prompt = self.session.build_system_prompt()
-        observation = system_prompt + states["observation"]
-        return {"observation": observation}
+        # TODO: states.get("observation") transfer to messages
+        messages = states.get("messages")
+        prompt = self.session.initialize(messages)
+        return {"observation": prompt}
 
     async def step(self, states: dict, **kwargs) -> Dict[str, Any]:
         action_text: str = states.get("action_text", "")
@@ -35,8 +32,8 @@ class AgentInstance(AgentInstanceBase):
         if reward < -1:
             reward = -1.0
 
-        self.step_idx += 1
         done = step_result.terminated
+        step_idx = step_result.idx
 
         return {
             "rewards": torch.tensor(reward),
@@ -46,7 +43,7 @@ class AgentInstance(AgentInstanceBase):
             "sampling_params": states.get("sampling_params", None),
             "extra_logs": {
                 "dummy_scores": torch.tensor(reward),
-                "turn_count": torch.tensor(self.step_idx),
+                "turn_count": torch.tensor(step_idx),
             },
         }
 
