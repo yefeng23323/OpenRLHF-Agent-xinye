@@ -29,7 +29,7 @@ class OpenAIEngine(LLMEngine):
         )
         self.model = model or os.getenv("OPENAI_MODEL")
 
-        # Separate client needed for tokenization route.
+        # NOTE: Separate client needed for tokenization route.
         self.tmp_client = OpenAI(
             base_url="/".join(self.base_url.split("/")[:-1]),
             api_key=self.api_key,

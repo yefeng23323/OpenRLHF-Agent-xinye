@@ -49,16 +49,16 @@ class AgentRuntime:
             )
             prompt_ids.extend(action_ids)
 
-            action_result = self.session.step_from_text(action_text, runtime=True)
+            outcome = self.session.step_from_text(action_text, runtime=True)
             # Emit the assistant reply and any tool observations.
-            for message in action_result.feedback_messages:
+            for message in outcome.feedback_messages:
                 yield message.model_dump(exclude_none=True)
 
-            if action_result.terminated:
+            if outcome.terminated:
                 return
 
             # Append tool outputs (plus the next assistant prefix) before continuing.
-            self._append_feedback_tokens(prompt_ids, action_result.feedback_text)
+            self._append_feedback_tokens(prompt_ids, outcome.feedback_text)
 
         yield Message(
             role="assistant",

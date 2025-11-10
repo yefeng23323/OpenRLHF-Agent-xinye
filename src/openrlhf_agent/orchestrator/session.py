@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from openrlhf_agent.chat_protocol import ChatProtocol
 from openrlhf_agent.core import StepOutcome, Message, Action
 from openrlhf_agent.environment import Environment
-from openrlhf_agent.orchestrator.history import Conversation
+from openrlhf_agent.orchestrator.conversation import Conversation
 
 
 class AgentSession:
@@ -18,15 +18,16 @@ class AgentSession:
         self.protocol = protocol
         self.history = Conversation()
 
-    # ------------------------------------------------------------------ helpers
-
     @staticmethod
     def _has_parse_error(action: Action) -> bool:
         if action.refusal:
             return True
         return any(call.refusal for call in action.tool_calls)
 
-    def _ingest_payload(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]]) -> None:
+    def _prepare_history(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]]) -> None:
+        """Reset the chat history and optionally seed prior turns."""
+
+        self.history.reset(system_prompt=self.environment.system_prompt)
         if payload is None:
             return
 
@@ -41,25 +42,7 @@ class AgentSession:
                 self.history.extend(parsed_messages)
             return
 
-        if payload:
-            self.history.extend(payload)
-
-    def _render_prompt(self) -> str:
-        return self.history.render_prompt(
-            self.protocol,
-            tools_manifest=self.environment.tools_manifest(),
-        )
-
-    def _render_tool_feedback(self, tool_messages: List[Message]) -> str:
-        if not tool_messages:
-            return ""
-        tool_payload = [message.model_dump(exclude_none=True) for message in tool_messages]
-        return self.protocol.render_messages(
-            messages=tool_payload,
-            add_generation_prompt=True,
-        )
-
-    # ---------------------------------------------------------------- lifecycle
+        self.history.extend(payload)
 
     def initialize(
         self, payload: Optional[Union[Sequence[Dict[str, Any]], str]] = None
@@ -67,11 +50,12 @@ class AgentSession:
         """Reset environment state and return the first prompt."""
 
         self.environment.reset_step()
-        self.history.reset(system_prompt=self.environment.system_prompt)
-        self._ingest_payload(payload)
-        return self._render_prompt()
-
-    # ------------------------------------------------------------------- stepping
+        self._prepare_history(payload)
+        return self.protocol.render_messages(
+            messages=self.history.messages,
+            tools_manifest=self.environment.tools_manifest(),
+            add_generation_prompt=True,
+        )
 
     def step(
         self,
@@ -100,8 +84,15 @@ class AgentSession:
             action, label=label, runtime=runtime
         )
 
-        tool_messages = [self.history.add_tool(observation) for observation in observations]
-        feedback_text = self._render_tool_feedback(tool_messages)
+        tool_messages = [Message(role="tool", content=observation) for observation in observations]
+        if tool_messages:
+            tool_payload = [message.model_dump(exclude_none=True) for message in tool_messages]
+            feedback_text = self.protocol.render_messages(
+                messages=tool_payload,
+                add_generation_prompt=True,
+            )
+        else:
+            feedback_text = ""
 
         return StepOutcome(
             step_index=self.environment.step_index,
