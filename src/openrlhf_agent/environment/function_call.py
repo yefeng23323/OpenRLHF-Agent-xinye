@@ -33,9 +33,10 @@ class FunctionCallEnvironment(Environment):
         max_steps: int = 32,
         reward_config: Optional[Dict[str, float]] = None,
     ) -> None:
-        self.registry = ToolRegistry([ThinkTool()])
-        self._max_steps = max_steps
-        self._step_index = 0
+        super().__init__(
+            max_steps=max_steps,
+            registry=ToolRegistry([ThinkTool()]),
+        )
 
         self._reward_config = {
             "correct_score": 1.0,
@@ -45,36 +46,11 @@ class FunctionCallEnvironment(Environment):
         if reward_config:
             self._reward_config.update(reward_config)
 
-    # ------------------------------------------------------------------ props
-
-    @property
-    def max_steps(self) -> int:
-        return self._max_steps
+    # ----------------------------------------------------------------- tooling
 
     @property
     def system_prompt(self) -> str:
         return SYSTEM_PROMPT_TEMPLATE.format(date=datetime.now().strftime("%Y-%m-%d"))
-
-    # ----------------------------------------------------------------- tooling
-
-    def tools_manifest(self) -> List[Dict[str, Any]]:
-        return self.registry.list_openai_tools()
-
-    def execute_tool(self, call: ToolCall, context: Dict[str, Any]) -> str:
-        tool = self.registry.get(call.name)
-        arguments = call.arguments
-        if not isinstance(arguments, dict):
-            raise TypeError("Tool arguments must be a JSON object.")
-        return tool.call(context=context, arguments=arguments)
-
-    # ---------------------------------------------------------------- lifecycle
-
-    def reset_step(self) -> None:
-        self._step_index = 0
-    
-    @property
-    def step_index(self):
-        return self._step_index
 
     def reward_hook(self, action: ParsedAssistantAction, label: Optional[str]) -> float:
         if label is None:

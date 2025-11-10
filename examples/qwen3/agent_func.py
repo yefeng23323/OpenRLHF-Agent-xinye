@@ -36,7 +36,7 @@ class AgentInstance(AgentInstanceBase):
         return {
             "rewards": torch.tensor(reward),
             "scores": torch.tensor(reward),
-            "environment_feedback": "" if done else step_result.rendered_observation,
+            "environment_feedback": "" if done else step_result.feedback_text,
             "done": done,
             "sampling_params": states.get("sampling_params", None),
             "extra_logs": {

@@ -39,11 +39,10 @@ class AgentStepResult:
     """Outcome produced after applying an action to the environment."""
 
     idx: int
-    assistant_message: ChatMessage
-    tool_messages: List[ChatMessage] = field(default_factory=list)
+    feedback_messages: List[ChatMessage] = field(default_factory=list)
+    feedback_text: str = ""
     reward: float = 0.0
     terminated: bool = False
 
 
 __all__ = ["ToolCall", "ParsedAssistantAction", "ChatMessage", "AgentStepResult"]
-

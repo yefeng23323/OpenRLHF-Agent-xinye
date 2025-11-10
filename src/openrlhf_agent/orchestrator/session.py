@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from openrlhf_agent.chat_protocol import ChatProtocol
 from openrlhf_agent.core import AgentStepResult, ChatMessage, ParsedAssistantAction
@@ -41,8 +41,10 @@ class AgentSession:
             # NOTE: skip system message
             if parsed_messages and parsed_messages[0].role == "system":
                 parsed_messages = parsed_messages[1:]
+            
             if parsed_messages:
                 self.history.extend(parsed_messages)
+        
         elif payload:
             self.history.extend(payload)
 
@@ -63,6 +65,7 @@ class AgentSession:
     ) -> AgentStepResult:
         """Apply a parsed assistant action to the environment."""
 
+        # Action message
         assistant_message = ChatMessage(
             role="assistant",
             content=action.content,
@@ -74,18 +77,27 @@ class AgentSession:
             assistant_message.content = raw_text
         self.history.add(assistant_message)
 
+        # Observation messages
         observations, reward, terminated, _ = self.environment.step(
             action, label=label, runtime=runtime
         )
 
-        tool_messages = []
-        for observation in observations:
-            tool_messages.append(self.history.add_tool_message(observation))
+        tool_messages: List[ChatMessage] = [
+            self.history.add_tool_message(observation) for observation in observations
+        ]
+
+        feedback_text = ""
+        if tool_messages:
+            tool_payloads = [msg.model_dump(exclude_none=True) for msg in tool_messages]
+            feedback_text = self.protocol.render_messages(
+                messages=tool_payloads,
+                add_generation_prompt=True,
+            )
 
         return AgentStepResult(
             idx=self.environment.step_index,
-            assistant_message=assistant_message,
-            tool_messages=tool_messages,
+            feedback_messages=[assistant_message, *tool_messages],
+            feedback_text=feedback_text,
             reward=reward,
             terminated=terminated,
         )
