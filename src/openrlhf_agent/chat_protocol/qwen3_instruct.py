@@ -5,7 +5,7 @@ import re
 from textwrap import dedent
 from typing import Any, ClassVar, List, Sequence
 
-from openrlhf_agent.core import ChatMessage, ParsedAssistantAction, ToolCall
+from openrlhf_agent.core import Message, Action, ToolCall
 from openrlhf_agent.chat_protocol.base import ChatProtocol
 
 
@@ -120,7 +120,7 @@ class Qwen3InstructProtocol(ChatProtocol):
     chat_template: ClassVar[str] = QWEN3_CHAT_TEMPLATE  # for render_messages
     tool_call_regex: ClassVar[re.Pattern[str]] = QWEN3_TOOL_CALL_REGEX  # for parse_assistant_text
 
-    def parse_assistant_text(self, text: str) -> ParsedAssistantAction:
+    def parse_assistant_text(self, text: str) -> Action:
         """Split assistant text into final content and tool calls."""
 
         raw = text or ""
@@ -138,7 +138,7 @@ class Qwen3InstructProtocol(ChatProtocol):
         content_parts.append(raw[cursor:])
         content = "".join(content_parts).strip()
 
-        return ParsedAssistantAction(content=content, tool_calls=tool_calls)
+        return Action(content=content, tool_calls=tool_calls)
 
     @staticmethod
     def _parse_call(raw_payload: str, idx: int) -> ToolCall:
@@ -147,25 +147,25 @@ class Qwen3InstructProtocol(ChatProtocol):
         try:
             payload = json.loads(raw_payload)
         except Exception as exc:  # simple catch keeps message short
-            return ToolCall(id=f"call_{idx}", refusal=f"error parse json: {exc}")
+            return ToolCall(call_id=f"call_{idx}", refusal=f"error parse json: {exc}")
 
         name = payload.get("name")
         arguments = payload.get("arguments")
 
         if not isinstance(name, str):
-            return ToolCall(id=f"call_{idx}", refusal="error parse json: name must be string.")
+            return ToolCall(call_id=f"call_{idx}", refusal="error parse json: name must be string.")
 
         if not isinstance(arguments, dict):
-            return ToolCall(id=f"call_{idx}", refusal="error parse json: arguments must be dict.")
+            return ToolCall(call_id=f"call_{idx}", refusal="error parse json: arguments must be dict.")
 
-        return ToolCall(id=f"call_{idx}", name=name, arguments=arguments)
+        return ToolCall(call_id=f"call_{idx}", name=name, arguments=arguments)
 
     def parse_messages_from_completion_text(
         self,
         completion_text: str,
-    ) -> List[ChatMessage]:
+    ) -> List[Message]:
         """Decode a rendered prompt and reconstruct the original messages."""
-        messages: List[ChatMessage] = []
+        messages: List[Message] = []
 
         for block in QWEN3_MESSAGE_BLOCK_REGEX.finditer(completion_text or ""):
             role = block.group("role").strip()
@@ -177,7 +177,7 @@ class Qwen3InstructProtocol(ChatProtocol):
             if role == "assistant":
                 parsed = self.parse_assistant_text(body)
                 messages.append(
-                    ChatMessage(
+                    Message(
                         role="assistant",
                         content=parsed.content,
                         tool_calls=list(parsed.tool_calls),
@@ -189,10 +189,10 @@ class Qwen3InstructProtocol(ChatProtocol):
                 for tool_match in QWEN3_TOOL_RESPONSE_REGEX.finditer(body):
                     payload = tool_match.group("body").strip()
                     if payload:
-                        messages.append(ChatMessage(role="tool", content=payload))
+                        messages.append(Message(role="tool", content=payload))
                 continue
 
-            messages.append(ChatMessage(role=role, content=body.strip()))
+            messages.append(Message(role=role, content=body.strip()))
 
         return messages
 

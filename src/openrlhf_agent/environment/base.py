@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 
-from openrlhf_agent.core import ParsedAssistantAction, ToolCall
+from openrlhf_agent.core import Action, ToolCall
 from openrlhf_agent.environment.tools import ToolRegistry
 
 
@@ -53,7 +53,7 @@ class Environment(ABC):
     @abstractmethod
     def reward_hook(
         self,
-        action: ParsedAssistantAction,
+        action: Action,
         label: Optional[str],
     ) -> float:
         """Return a scalar reward given the latest action/label pair."""
@@ -61,7 +61,7 @@ class Environment(ABC):
     @abstractmethod
     def step(
         self,
-        action: ParsedAssistantAction,
+        action: Action,
         label: Optional[str] = None,
         runtime: bool = False,
     ) -> Tuple[List[str], float, bool, Optional[str]]:

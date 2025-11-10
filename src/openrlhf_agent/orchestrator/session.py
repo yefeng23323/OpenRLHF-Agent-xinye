@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from openrlhf_agent.chat_protocol import ChatProtocol
-from openrlhf_agent.core import AgentStepResult, ChatMessage, ParsedAssistantAction
+from openrlhf_agent.core import StepOutcome, Message, Action
 from openrlhf_agent.environment import Environment
-from openrlhf_agent.orchestrator.history import ChatHistory
+from openrlhf_agent.orchestrator.history import Conversation
 
 
 class AgentSession:
@@ -16,15 +16,48 @@ class AgentSession:
     def __init__(self, environment: Environment, protocol: ChatProtocol) -> None:
         self.environment = environment
         self.protocol = protocol
-        self.history = ChatHistory()
+        self.history = Conversation()
 
     # ------------------------------------------------------------------ helpers
 
     @staticmethod
-    def _has_parse_error(action: ParsedAssistantAction) -> bool:
+    def _has_parse_error(action: Action) -> bool:
         if action.refusal:
             return True
         return any(call.refusal for call in action.tool_calls)
+
+    def _ingest_payload(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]]) -> None:
+        if payload is None:
+            return
+
+        if isinstance(payload, str):
+            text = payload.strip()
+            if not text:
+                return
+            parsed_messages = self.protocol.parse_messages_from_completion_text(text)
+            if parsed_messages and parsed_messages[0].role == "system":
+                parsed_messages = parsed_messages[1:]
+            if parsed_messages:
+                self.history.extend(parsed_messages)
+            return
+
+        if payload:
+            self.history.extend(payload)
+
+    def _render_prompt(self) -> str:
+        return self.history.render_prompt(
+            self.protocol,
+            tools_manifest=self.environment.tools_manifest(),
+        )
+
+    def _render_tool_feedback(self, tool_messages: List[Message]) -> str:
+        if not tool_messages:
+            return ""
+        tool_payload = [message.model_dump(exclude_none=True) for message in tool_messages]
+        return self.protocol.render_messages(
+            messages=tool_payload,
+            add_generation_prompt=True,
+        )
 
     # ---------------------------------------------------------------- lifecycle
 
@@ -35,38 +68,23 @@ class AgentSession:
 
         self.environment.reset_step()
         self.history.reset(system_prompt=self.environment.system_prompt)
-
-        if isinstance(payload, str) and payload.strip():
-            parsed_messages = self.protocol.parse_messages_from_completion_text(payload)
-            # NOTE: skip system message
-            if parsed_messages and parsed_messages[0].role == "system":
-                parsed_messages = parsed_messages[1:]
-            
-            if parsed_messages:
-                self.history.extend(parsed_messages)
-        
-        elif payload:
-            self.history.extend(payload)
-
-        return self.history.render_prompt(
-            self.protocol,
-            tools_manifest=self.environment.tools_manifest(),
-        )
+        self._ingest_payload(payload)
+        return self._render_prompt()
 
     # ------------------------------------------------------------------- stepping
 
     def step(
         self,
-        action: ParsedAssistantAction,
+        action: Action,
         *,
         label: Optional[str] = None,
         runtime: bool = False,
         raw_text: Optional[str] = None,
-    ) -> AgentStepResult:
+    ) -> StepOutcome:
         """Apply a parsed assistant action to the environment."""
 
         # Action message
-        assistant_message = ChatMessage(
+        assistant_message = Message(
             role="assistant",
             content=action.content,
             tool_calls=action.tool_calls,
@@ -75,26 +93,18 @@ class AgentSession:
         if parse_error and not action.tool_calls and raw_text is not None:
             # Preserve the unparsed text so the user can see what went wrong.
             assistant_message.content = raw_text
-        self.history.add(assistant_message)
+        self.history.append(assistant_message)
 
         # Observation messages
         observations, reward, terminated, _ = self.environment.step(
             action, label=label, runtime=runtime
         )
 
-        tool_messages: List[ChatMessage] = [
-            self.history.add_tool_message(observation) for observation in observations
-        ]
+        tool_messages = [self.history.add_tool(observation) for observation in observations]
+        feedback_text = self._render_tool_feedback(tool_messages)
 
-        feedback_text = ""
-        if tool_messages:
-            feedback_text = self.protocol.render_messages(
-                messages=[msg.model_dump(exclude_none=True) for msg in tool_messages],
-                add_generation_prompt=True,
-            )
-
-        return AgentStepResult(
-            idx=self.environment.step_index,
+        return StepOutcome(
+            step_index=self.environment.step_index,
             feedback_messages=[assistant_message, *tool_messages], # for runtime, with action
             feedback_text=feedback_text,  # for train, without action
             reward=reward,
@@ -107,7 +117,7 @@ class AgentSession:
         *,
         label: Optional[str] = None,
         runtime: bool = False,
-    ) -> AgentStepResult:
+    ) -> StepOutcome:
         """Parse a raw model response and forward to `step`."""
 
         parsed_action = self.protocol.parse_assistant_text(action_text)

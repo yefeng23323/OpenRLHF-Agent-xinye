@@ -2,5 +2,6 @@
 
 from openrlhf_agent.orchestrator.runtime import AgentRuntime
 from openrlhf_agent.orchestrator.session import AgentSession
+from openrlhf_agent.orchestrator.history import Conversation
 
-__all__ = ["AgentRuntime", "AgentSession"]
+__all__ = ["AgentRuntime", "AgentSession", "Conversation"]

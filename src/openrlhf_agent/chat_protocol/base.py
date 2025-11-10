@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Sequence
 
 from jinja2 import Environment, Template
 
-from openrlhf_agent.core import ChatMessage, ParsedAssistantAction
+from openrlhf_agent.core import Message, Action
 
 
 _JINJA_ENV = Environment(autoescape=False, trim_blocks=True, lstrip_blocks=True)
@@ -51,7 +51,7 @@ class ChatProtocol(ABC):
             add_generation_prompt=add_generation_prompt,
         )
 
-    def parse_assistant_text(self, text: str) -> ParsedAssistantAction:
+    def parse_assistant_text(self, text: str) -> Action:
         """Turn a raw assistant reply into a structured object."""
 
         raise NotImplementedError
@@ -59,7 +59,7 @@ class ChatProtocol(ABC):
     def parse_messages_from_completion_text(
         self,
         completion_text: str,
-    ) -> List[ChatMessage]:
-        """Decode a rendered prompt back into `ChatMessage` objects."""
+    ) -> List[Message]:
+        """Decode a rendered prompt back into `Message` objects."""
 
         raise NotImplementedError

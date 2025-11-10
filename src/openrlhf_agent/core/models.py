@@ -11,13 +11,13 @@ from pydantic import BaseModel, Field
 class ToolCall(BaseModel):
     """One tool invocation requested by the model."""
 
-    id: str
+    call_id: str
     name: Optional[str] = None
     arguments: Optional[Dict[str, Any]] = None
     refusal: Optional[str] = None
 
 
-class ParsedAssistantAction(BaseModel):
+class Action(BaseModel):
     """Assistant reply split into text and tool calls."""
 
     content: Optional[str] = None
@@ -25,7 +25,7 @@ class ParsedAssistantAction(BaseModel):
     refusal: Optional[str] = None
 
 
-class ChatMessage(BaseModel):
+class Message(BaseModel):
     """Single chat turn tracked inside the session memory."""
 
     role: str
@@ -35,14 +35,14 @@ class ChatMessage(BaseModel):
 
 
 @dataclass
-class AgentStepResult:
+class StepOutcome:
     """Outcome produced after applying an action to the environment."""
 
-    idx: int
-    feedback_messages: List[ChatMessage] = field(default_factory=list)
+    step_index: int
+    feedback_messages: List[Message] = field(default_factory=list)
     feedback_text: str = ""
     reward: float = 0.0
     terminated: bool = False
 
 
-__all__ = ["ToolCall", "ParsedAssistantAction", "ChatMessage", "AgentStepResult"]
+__all__ = ["ToolCall", "Action", "Message", "StepOutcome"]

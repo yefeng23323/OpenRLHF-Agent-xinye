@@ -33,7 +33,7 @@ AgentRuntime
 ### Where the pieces live
 
 - `src/openrlhf_agent/core/`: shared chat, tool-call, and step-result models.
-- `src/openrlhf_agent/orchestrator/`: runtime loop, `AgentRuntime`, and `AgentSession` orchestration.
+- `src/openrlhf_agent/orchestrator/`: runtime loop, `AgentRuntime`, the `Conversation`, and `AgentSession` orchestration.
 - `src/openrlhf_agent/environment/`: default environment, tool registry, reward hooks, and tool base classes.
 - `src/openrlhf_agent/chat_protocol/`: prompt builders, `<tool_call>` parsing, and protocol factory helpers.
 - `src/openrlhf_agent/engine/`: OpenAI-compatible `LLMEngine` base and the default HTTP client.
@@ -75,7 +75,7 @@ python examples/qwen3/runtime_demo.py
 The script wires together:
 
 - `OpenAIEngine` pointing at a vLLM/OpenAI-compatible endpoint.
-- `DefaultEnvironment` with the `think` tool, feedback hooks, and plain-text finals.
+- `FunctionCallEnvironment` with the `think` tool, feedback hooks, and plain-text finals.
 - `make_chat_protocol("qwen3")` for prompt rendering and `<tool_call>` parsing.
 
 You will see tool traces and the final answer printed to the console.

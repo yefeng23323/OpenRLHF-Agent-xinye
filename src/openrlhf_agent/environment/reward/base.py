@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from openrlhf_agent.core import ParsedAssistantAction
+from openrlhf_agent.core import Action
 
 
 class RewardStrategy(ABC):
@@ -14,7 +14,7 @@ class RewardStrategy(ABC):
     @abstractmethod
     def reward_from_action(
         self,
-        action: ParsedAssistantAction,
+        action: Action,
         label: Optional[str],
     ) -> float:
         """Compute reward from a parsed action and optional label."""

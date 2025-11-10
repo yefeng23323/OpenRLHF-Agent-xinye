@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from openrlhf_agent.core import ParsedAssistantAction
+from openrlhf_agent.core import Action
 
 from openrlhf_agent.environment.reward.base import RewardStrategy
 
@@ -29,7 +29,7 @@ class MatchingReward(RewardStrategy):
 
     def reward_from_action(
         self,
-        action: ParsedAssistantAction,
+        action: Action,
         label: Optional[str],
     ) -> float:
         """Derive a reward from the parsed assistant action."""

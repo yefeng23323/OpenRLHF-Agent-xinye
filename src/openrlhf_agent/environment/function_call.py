@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
-from openrlhf_agent.core import ParsedAssistantAction
+from openrlhf_agent.core import Action, ToolCall
 from openrlhf_agent.environment.base import Environment
 from openrlhf_agent.environment.reward import RewardStrategy, make_reward
-from openrlhf_agent.environment.tools import FinalTool, ThinkTool, ToolRegistry
+from openrlhf_agent.environment.tools import ThinkTool, ToolRegistry
 
 
 SYSTEM_PROMPT_TEMPLATE = (
@@ -52,7 +52,7 @@ class FunctionCallEnvironment(Environment):
     def system_prompt(self) -> str:
         return SYSTEM_PROMPT_TEMPLATE.format(date=datetime.now().strftime("%Y-%m-%d"))
 
-    def reward_hook(self, action: ParsedAssistantAction, label: Optional[str]) -> float:
+    def reward_hook(self, action: Action, label: Optional[str]) -> float:
         return self._reward.reward_from_action(action, label)
 
     # ----------------------------------------------------------------- helpers
@@ -89,7 +89,7 @@ class FunctionCallEnvironment(Environment):
 
     def step(
         self,
-        action: ParsedAssistantAction,
+        action: Action,
         label: Optional[str] = None,
         runtime: bool = False,
     ) -> Tuple[List[str], float, bool, Optional[str]]:
@@ -106,112 +106,46 @@ class FunctionCallEnvironment(Environment):
                     hint="Wrap tool calls in <tool_call> tags or reply with plain text only.",
                 )
             )
-            self._step_index += 1
-            return observations, reward, terminated, final_response
+            return self._finalize_step(
+                action=action,
+                observations=observations,
+                reward=reward,
+                terminated=terminated,
+                final_response=final_response,
+                label=label,
+                runtime=runtime,
+            )
 
-        if not action.tool_calls:
-            response = (action.content or "").strip()
-            if not response:
-                observations.append(
-                    self._internal_message(
-                        code="empty_final",
-                        message="Final response cannot be empty when no tool calls are provided.",
-                        hint="Reply with plain text to finish or call think(...) first.",
-                    )
-                )
-                self._step_index += 1
-                return observations, reward, terminated, None
-
-            final_response = response
-            terminated = True
+        tool_calls = action.tool_calls or []
+        if not tool_calls:
+            final_response = self._final_response_or_hint(action, observations)
+            terminated = final_response is not None
         else:
-            allowed_tools = set(self.registry.names())
+            observations.extend(self._run_tool_calls(tool_calls))
 
-            for index, tool_call in enumerate(action.tool_calls):
-                if tool_call is None:
-                    continue
+        return self._finalize_step(
+            action=action,
+            observations=observations,
+            reward=reward,
+            terminated=terminated,
+            final_response=final_response,
+            label=label,
+            runtime=runtime,
+        )
 
-                if tool_call.refusal:
-                    observations.append(
-                        self._internal_message(
-                            code="tool_call_error",
-                            message=tool_call.refusal,
-                            hint="Fix the tool call JSON payload and try again.",
-                            extras={"tool_call_id": tool_call.id, "action_index": index},
-                        )
-                    )
-                    continue
+    # ----------------------------------------------------------------- internals
 
-                name = (tool_call.name or "").strip()
-                if not name:
-                    observations.append(
-                        self._internal_message(
-                            code="missing_tool_name",
-                            message="Tool name is required.",
-                            hint="Provide a function name inside the tool call payload.",
-                            extras={"tool_call_id": tool_call.id, "action_index": index},
-                        )
-                    )
-                    continue
-
-                if name not in allowed_tools:
-                    observations.append(
-                        self._internal_message(
-                            code="invalid_tool",
-                            message=f"Tool '{name}' is not available.",
-                            hint="Choose one of the allowed tools.",
-                            extras={"tool_call_id": tool_call.id, "action_index": index},
-                        )
-                    )
-                    continue
-
-                arguments = tool_call.arguments or {}
-                if not isinstance(arguments, dict):
-                    observations.append(
-                        self._internal_message(
-                            code="invalid_arguments",
-                            message="Tool arguments must be a JSON object.",
-                            tool=name,
-                            hint="Use key/value pairs when building tool arguments.",
-                            extras={
-                                "tool_call_id": tool_call.id,
-                                "action_index": index,
-                                "arguments": arguments,
-                            },
-                        )
-                    )
-                    continue
-
-                try:
-                    outcome = self.execute_tool(call=tool_call, context=None)
-                except Exception as exc:  # pragma: no cover - defensive guard
-                    observations.append(
-                        self._internal_message(
-                            code="tool_runtime_error",
-                            message=f"Tool '{name}' raised an exception.",
-                            tool=name,
-                            hint="Revise the arguments or plan with think(...) before retrying.",
-                            extras={
-                                "tool_call_id": tool_call.id,
-                                "action_index": index,
-                                "exception": str(exc),
-                            },
-                        )
-                    )
-                    continue
-
-                # if name == ThinkTool.name:
-                #     observations.append(
-                #         self._internal_message(
-                #             code="think_notes",
-                #             message="Captured private notes via think().",
-                #             tool=name,
-                #             extras={"notes": outcome, "action_index": index},
-                #         )
-                #     )
-                # else:
-                observations.append(str(outcome))
-
+    def _finalize_step(
+        self,
+        *,
+        action: Action,
+        observations: List[str],
+        reward: float,
+        terminated: bool,
+        final_response: Optional[str],
+        label: Optional[str],
+        runtime: bool,
+    ) -> Tuple[List[str], float, bool, Optional[str]]:
         self._step_index += 1
 
         if not runtime:
@@ -221,6 +155,97 @@ class FunctionCallEnvironment(Environment):
             terminated = True
 
         return observations, reward, terminated, final_response
+
+    def _final_response_or_hint(
+        self,
+        action: Action,
+        observations: List[str],
+    ) -> Optional[str]:
+        response = (action.content or "").strip()
+        if response:
+            return response
+        observations.append(
+            self._internal_message(
+                code="empty_final",
+                message="Final response cannot be empty when no tool calls are provided.",
+                hint="Reply with plain text to finish or call think(...) first.",
+            )
+        )
+        return None
+
+    def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
+        outputs: List[str] = []
+        allowed = set(self.registry.names())
+        for index, tool_call in enumerate(tool_calls):
+            if tool_call is None:
+                continue
+            message = self._handle_tool_call(tool_call, index=index, allowed_tools=allowed)
+            if message is not None:
+                outputs.append(message)
+        return outputs
+
+    def _handle_tool_call(
+        self,
+        tool_call: ToolCall,
+        *,
+        index: int,
+        allowed_tools: Set[str],
+    ) -> Optional[str]:
+        if tool_call.refusal:
+            return self._internal_message(
+                code="tool_call_error",
+                message=tool_call.refusal,
+                hint="Fix the tool call JSON payload and try again.",
+                extras={"tool_call_id": tool_call.call_id, "action_index": index},
+            )
+
+        name = (tool_call.name or "").strip()
+        if not name:
+            return self._internal_message(
+                code="missing_tool_name",
+                message="Tool name is required.",
+                hint="Provide a function name inside the tool call payload.",
+                extras={"tool_call_id": tool_call.call_id, "action_index": index},
+            )
+
+        if name not in allowed_tools:
+            return self._internal_message(
+                code="invalid_tool",
+                message=f"Tool '{name}' is not available.",
+                hint="Choose one of the allowed tools.",
+                extras={"tool_call_id": tool_call.call_id, "action_index": index},
+            )
+
+        arguments = tool_call.arguments or {}
+        if not isinstance(arguments, dict):
+            return self._internal_message(
+                code="invalid_arguments",
+                message="Tool arguments must be a JSON object.",
+                tool=name,
+                hint="Use key/value pairs when building tool arguments.",
+                extras={
+                    "tool_call_id": tool_call.call_id,
+                    "action_index": index,
+                    "arguments": arguments,
+                },
+            )
+
+        try:
+            outcome = self.execute_tool(call=tool_call, context=None)
+        except Exception as exc:  # pragma: no cover - defensive guard
+            return self._internal_message(
+                code="tool_runtime_error",
+                message=f"Tool '{name}' raised an exception.",
+                tool=name,
+                hint="Revise the arguments or plan with think(...) before retrying.",
+                extras={
+                    "tool_call_id": tool_call.call_id,
+                    "action_index": index,
+                    "exception": str(exc),
+                },
+            )
+
+        return str(outcome)
 
 
 __all__ = ["FunctionCallEnvironment"]

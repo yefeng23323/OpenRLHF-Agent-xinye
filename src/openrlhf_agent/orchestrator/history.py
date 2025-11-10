@@ -1,54 +1,59 @@
-"""Lightweight helper to keep the session chat history tidy."""
+"""Conversation buffer that keeps chat state tidy."""
 
 from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from openrlhf_agent.chat_protocol import ChatProtocol
-from openrlhf_agent.core import ChatMessage
+from openrlhf_agent.core import Message
 
 
-class ChatHistory:
-    """Stores messages and builds prompts for the agent session."""
+class Conversation:
+    """Stores chat messages and knows how to render them."""
 
     def __init__(self) -> None:
-        self._messages: List[ChatMessage] = []
+        self._messages: List[Message] = []
 
-    # --------------------------------------------------------------------- setup
+    # ------------------------------------------------------------------ lifecycle
 
-    def _coerce_message(self, message: ChatMessage | Mapping[str, Any]) -> ChatMessage:
-        if isinstance(message, ChatMessage):
+    @staticmethod
+    def _coerce(message: Message | Mapping[str, Any]) -> Message:
+        if isinstance(message, Message):
             return message
         if isinstance(message, Mapping):
-            return ChatMessage(**message)
+            return Message(**message)
         raise TypeError(f"Unsupported message type: {type(message)!r}")
 
     def reset(self, *, system_prompt: str) -> None:
-        """Start a new history using the latest system prompt."""
+        """Start a fresh transcript using the provided system prompt."""
 
-        self._messages = [ChatMessage(role="system", content=system_prompt)]
+        self._messages = [Message(role="system", content=system_prompt)]
 
-    def extend(self, messages: Iterable[ChatMessage | Mapping[str, Any]]) -> None:
-        """Append a batch of messages in their current order."""
+    def extend(self, messages: Iterable[Message | Mapping[str, Any]]) -> None:
+        """Append a list of historical messages."""
 
         for message in messages:
-            self._messages.append(self._coerce_message(message))
+            self._messages.append(self._coerce(message))
 
-    # ------------------------------------------------------------------- mutators
+    # -------------------------------------------------------------------- mutators
 
-    def add(self, message: ChatMessage) -> None:
-        """Append a single message to the history."""
+    def append(self, message: Message) -> Message:
+        """Append a message and return it for convenience."""
 
         self._messages.append(message)
+        return message
 
-    def add_tool_message(self, content: str) -> ChatMessage:
-        """Create and append a tool response message."""
+    def add_tool(self, content: str) -> Message:
+        """Record a tool response as a `tool` role message."""
 
-        tool_message = ChatMessage(role="tool", content=content)
-        self._messages.append(tool_message)
-        return tool_message
+        return self.append(Message(role="tool", content=content))
 
-    # -------------------------------------------------------------------- exports
+    # --------------------------------------------------------------------- exports
+
+    def payload(self) -> List[Dict[str, Any]]:
+        """Return provider-ready dictionaries of the transcript."""
+
+        return [message.model_dump(exclude_none=True) for message in self._messages]
 
     def render_prompt(
         self,
@@ -57,22 +62,24 @@ class ChatHistory:
         tools_manifest: Optional[Sequence[Dict[str, Any]]] = None,
         add_generation_prompt: bool = True,
     ) -> str:
-        """Render the history into a provider-specific prompt."""
+        """Render the transcript into whatever prompt the protocol expects."""
 
-        message_payload = [
-            message.model_dump(exclude_none=True) for message in self._messages
-        ]
         return protocol.render_messages(
-            messages=message_payload,
+            messages=self.payload(),
             tools_manifest=tools_manifest,
             add_generation_prompt=add_generation_prompt,
         )
 
     @property
-    def messages(self) -> List[ChatMessage]:
-        """Return a shallow copy of the recorded messages."""
+    def messages(self) -> List[Message]:
+        """Expose a shallow copy for inspection or debugging."""
 
         return list(self._messages)
 
 
-__all__ = ["ChatHistory"]
+# Backwards compatible aliases
+ConversationBuffer = Conversation
+ChatHistory = Conversation
+
+
+__all__ = ["Conversation", "ConversationBuffer", "ChatHistory"]

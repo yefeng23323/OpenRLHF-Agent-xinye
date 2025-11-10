@@ -11,7 +11,7 @@ logger.setLevel(logging.INFO)
 
 
 class AgentInstance(AgentInstanceBase):
-    async def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         environment = make_environment(name="default")
         protocol = make_chat_protocol("qwen3_instruct")
         self.session = AgentSession(environment, protocol)
@@ -31,7 +31,7 @@ class AgentInstance(AgentInstanceBase):
             reward = -1.0
 
         done = step_result.terminated
-        step_idx = step_result.idx
+        step_idx = step_result.step_index
 
         return {
             "rewards": torch.tensor(reward),
@@ -49,6 +49,3 @@ class AgentInstance(AgentInstanceBase):
 class AgentExecutor(AgentExecutorBase):
     def __init__(self, max_steps, max_length, llm_engine, hf_tokenizer, result_queue):
         super().__init__(AgentInstance, max_steps, max_length, llm_engine, hf_tokenizer, result_queue)
-
-    async def execute(self, prompt, label, sampling_params):
-        return await super().execute(prompt, label, sampling_params)

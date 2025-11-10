@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from openrlhf_agent.chat_protocol import ChatProtocol
-from openrlhf_agent.core import ChatMessage
+from openrlhf_agent.core import Message
 from openrlhf_agent.environment import Environment
 from openrlhf_agent.engine import LLMEngine
 
@@ -27,10 +27,19 @@ class AgentRuntime:
         self.session = AgentSession(environment, protocol)
         self.max_new_tokens_per_step = max_new_tokens_per_step
 
+    def _bootstrap_prompt_ids(self, messages: Sequence[Dict[str, Any]]) -> List[int]:
+        prompt = self.session.initialize(messages)
+        return self.engine.tokenize(prompt)
+
+    def _append_feedback_tokens(self, prompt_ids: List[int], feedback_text: str) -> None:
+        if not feedback_text:
+            return
+        prompt_ids.extend(self.engine.tokenize(feedback_text))
+
     def run_steps(self, messages: Sequence[Dict[str, Any]]):
         """Yield chat messages emitted during the interaction loop."""
 
-        prompt_ids = self.engine.tokenize(self.session.initialize(messages))
+        prompt_ids = self._bootstrap_prompt_ids(messages)
 
         for _ in range(self.session.environment.max_steps):
             # Ask the model for the next action and track the emitted tokens.
@@ -49,10 +58,9 @@ class AgentRuntime:
                 return
 
             # Append tool outputs (plus the next assistant prefix) before continuing.
-            feedback_ids = self.engine.tokenize(action_result.feedback_text)
-            prompt_ids.extend(feedback_ids)
+            self._append_feedback_tokens(prompt_ids, action_result.feedback_text)
 
-        yield ChatMessage(
+        yield Message(
             role="assistant",
             content="Max steps reached without final response.",
         ).model_dump(exclude_none=True)
