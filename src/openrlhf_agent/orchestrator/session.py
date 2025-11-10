@@ -96,8 +96,8 @@ class AgentSession:
 
         return AgentStepResult(
             idx=self.environment.step_index,
-            feedback_messages=[assistant_message, *tool_messages],
-            feedback_text=feedback_text,
+            feedback_messages=[assistant_message, *tool_messages], # for runtime
+            feedback_text=feedback_text,  # for train
             reward=reward,
             terminated=terminated,
         )

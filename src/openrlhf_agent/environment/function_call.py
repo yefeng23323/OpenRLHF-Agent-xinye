@@ -6,10 +6,10 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from openrlhf_agent.core import ParsedAssistantAction, ToolCall
+from openrlhf_agent.core import ParsedAssistantAction
 from openrlhf_agent.environment.base import Environment
-from openrlhf_agent.environment.reward import compute_reward
-from openrlhf_agent.environment.tools import ThinkTool, ToolRegistry
+from openrlhf_agent.environment.reward import RewardStrategy, make_reward
+from openrlhf_agent.environment.tools import FinalTool, ThinkTool, ToolRegistry
 
 
 SYSTEM_PROMPT_TEMPLATE = (
@@ -32,19 +32,19 @@ class FunctionCallEnvironment(Environment):
         *,
         max_steps: int = 32,
         reward_config: Optional[Dict[str, float]] = None,
+        reward_strategy: Optional[RewardStrategy] = None,
+        reward_name: Optional[str] = None,
     ) -> None:
         super().__init__(
             max_steps=max_steps,
             registry=ToolRegistry([ThinkTool()]),
         )
 
-        self._reward_config = {
-            "correct_score": 1.0,
-            "verdict_score": 0.1,
-            "miss_score": 0.0,
-        }
-        if reward_config:
-            self._reward_config.update(reward_config)
+        self._reward = make_reward(
+            reward_name,
+            config=reward_config,
+            strategy=reward_strategy,
+        )
 
     # ----------------------------------------------------------------- tooling
 
@@ -53,28 +53,7 @@ class FunctionCallEnvironment(Environment):
         return SYSTEM_PROMPT_TEMPLATE.format(date=datetime.now().strftime("%Y-%m-%d"))
 
     def reward_hook(self, action: ParsedAssistantAction, label: Optional[str]) -> float:
-        if label is None:
-            return 0.0
-
-        # Prefer plain-text finals when present.
-        final_text = (action.content or "").strip()
-        if final_text and not action.tool_calls:
-            return compute_reward(final_text, label, **self._reward_config)
-
-        # Fallback: check for an explicit final tool (for compatibility).
-        for tool_call in action.tool_calls or []:
-            if tool_call is None:
-                continue
-            if (tool_call.name or "").strip() != "final":
-                continue
-            arguments = tool_call.arguments or {}
-            if not isinstance(arguments, dict):
-                continue
-            answer = str(arguments.get("answer", "")).strip()
-            if answer:
-                return compute_reward(answer, label, **self._reward_config)
-
-        return 0.0
+        return self._reward.reward_from_action(action, label)
 
     # ----------------------------------------------------------------- helpers
 
