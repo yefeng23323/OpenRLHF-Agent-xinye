@@ -14,13 +14,12 @@ __version__ = "0.0.1"
 from openrlhf_agent.chat_protocol import make_chat_protocol
 from openrlhf_agent.environment import make_environment
 from openrlhf_agent.engine import OpenAIEngine
-from openrlhf_agent.orchestrator import AgentRuntime, AgentSession, AgentStepResult
+from openrlhf_agent.orchestrator import AgentRuntime, AgentSession
 
 __all__ = [
     "__version__",
     "AgentRuntime",
     "AgentSession",
-    "AgentStepResult",
     "make_environment",
     "make_chat_protocol",
     "OpenAIEngine",

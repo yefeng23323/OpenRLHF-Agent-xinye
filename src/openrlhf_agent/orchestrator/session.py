@@ -88,16 +88,15 @@ class AgentSession:
 
         feedback_text = ""
         if tool_messages:
-            tool_payloads = [msg.model_dump(exclude_none=True) for msg in tool_messages]
             feedback_text = self.protocol.render_messages(
-                messages=tool_payloads,
+                messages=[msg.model_dump(exclude_none=True) for msg in tool_messages],
                 add_generation_prompt=True,
             )
 
         return AgentStepResult(
             idx=self.environment.step_index,
-            feedback_messages=[assistant_message, *tool_messages], # for runtime
-            feedback_text=feedback_text,  # for train
+            feedback_messages=[assistant_message, *tool_messages], # for runtime, with action
+            feedback_text=feedback_text,  # for train, without action
             reward=reward,
             terminated=terminated,
         )
