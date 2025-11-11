@@ -94,7 +94,7 @@ You will see tool traces and the final answer printed to the console.
 
 ### Tailor the environment
 
-- Override `reward_hook(action, label)` for domain-specific scoring.
+- Supply custom `RewardStrategy` objects via `result_reward` / `process_reward` to specialize final vs process scoring.
 - Extend `step` to orchestrate multiple tool calls or enforce guardrails.
 - Emit hidden hints through `_internal_obs` to steer the policy between turns.
 

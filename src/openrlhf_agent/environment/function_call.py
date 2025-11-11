@@ -31,29 +31,24 @@ class FunctionCallEnvironment(Environment):
         self,
         *,
         max_steps: int = 32,
-        reward_config: Optional[Dict[str, float]] = None,
+        result_reward: Optional[RewardStrategy] = None,
+        process_reward: Optional[RewardStrategy] = None,
+        result_reward_name: Optional[str] = None,
+        process_reward_name: Optional[str] = None,
         reward_strategy: Optional[RewardStrategy] = None,
-        reward_name: Optional[str] = None,
     ) -> None:
+        resolved_result = result_reward or reward_strategy or make_reward(result_reward_name)
+        resolved_process = process_reward or make_reward(process_reward_name)
         super().__init__(
             max_steps=max_steps,
             registry=ToolRegistry([ThinkTool()]),
+            result_reward=resolved_result,
+            process_reward=resolved_process,
         )
-
-        self._reward = make_reward(
-            reward_name,
-            config=reward_config,
-            strategy=reward_strategy,
-        )
-
-    # ----------------------------------------------------------------- tooling
 
     @property
     def system_prompt(self) -> str:
         return SYSTEM_PROMPT_TEMPLATE.format(date=datetime.now().strftime("%Y-%m-%d"))
-
-    def reward_hook(self, action: Action, label: Optional[str]) -> float:
-        return self._reward.reward_from_action(action, label)
 
     # ----------------------------------------------------------------- helpers
 
@@ -92,11 +87,12 @@ class FunctionCallEnvironment(Environment):
         action: Action,
         label: Optional[str] = None,
         runtime: bool = False,
-    ) -> Tuple[List[str], float, bool, Optional[str]]:
+    ) -> Tuple[List[str], float, bool]:
         observations: List[str] = []
         reward = 0.0
         terminated = False
-        final_response: Optional[str] = None
+        final_plain_text = False
+        used_tools = False
 
         if action.refusal:
             observations.append(
@@ -111,26 +107,31 @@ class FunctionCallEnvironment(Environment):
                 observations=observations,
                 reward=reward,
                 terminated=terminated,
-                final_response=final_response,
                 label=label,
                 runtime=runtime,
             )
 
-        tool_calls = action.tool_calls or []
-        if not tool_calls:
-            final_response = self._final_response_or_hint(action, observations)
-            terminated = final_response is not None
         else:
-            observations.extend(self._run_tool_calls(tool_calls))
+            tool_calls = action.tool_calls or []
+            if not tool_calls:
+                final_plain_text = self._final_response_or_hint(action, observations)
+                terminated = final_plain_text
+            else:
+                observations.extend(self._run_tool_calls(tool_calls))
+                used_tools = True
+
+        if not runtime:
+            if used_tools:
+                reward += self.process_reward(action, label)  # score tool planning quality
+            if final_plain_text:
+                reward += self.result_reward(action, label)  # score the final answer
 
         return self._finalize_step(
             action=action,
             observations=observations,
             reward=reward,
             terminated=terminated,
-            final_response=final_response,
             label=label,
-            runtime=runtime,
         )
 
     # ----------------------------------------------------------------- internals
@@ -142,28 +143,23 @@ class FunctionCallEnvironment(Environment):
         observations: List[str],
         reward: float,
         terminated: bool,
-        final_response: Optional[str],
         label: Optional[str],
-        runtime: bool,
-    ) -> Tuple[List[str], float, bool, Optional[str]]:
+    ) -> Tuple[List[str], float, bool]:
         self._step_index += 1
-
-        if not runtime:
-            reward += self.reward_hook(action, label)
 
         if self._step_index >= self.max_steps:
             terminated = True
 
-        return observations, reward, terminated, final_response
+        return observations, reward, terminated
 
     def _final_response_or_hint(
         self,
         action: Action,
         observations: List[str],
-    ) -> Optional[str]:
+    ) -> bool:
         response = (action.content or "").strip()
         if response:
-            return response
+            return True
         observations.append(
             self._internal_message(
                 code="empty_final",
@@ -171,7 +167,7 @@ class FunctionCallEnvironment(Environment):
                 hint="Reply with plain text to finish or call think(...) first.",
             )
         )
-        return None
+        return False
 
     def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
         outputs: List[str] = []
