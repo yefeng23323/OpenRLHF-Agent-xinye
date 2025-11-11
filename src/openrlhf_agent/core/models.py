@@ -21,7 +21,7 @@ class Action(BaseModel):
     """Assistant reply split into text and tool calls."""
 
     content: Optional[str] = None
-    tool_calls: List[ToolCall] = Field(default_factory=list)
+    tool_calls: Optional[List[ToolCall]] = None
     refusal: Optional[str] = None
 
 
@@ -30,7 +30,7 @@ class Message(BaseModel):
 
     role: str
     content: Optional[str] = None
-    tool_calls: List[ToolCall] = Field(default_factory=list)
+    tool_calls: Optional[List[ToolCall]] = None
     reasoning_content: Optional[str] = None  # used by reasoning-capable backends
 
 
@@ -39,8 +39,8 @@ class StepOutcome:
     """Outcome produced after applying an action to the environment."""
 
     step_index: int
-    feedback_messages: List[Message] = field(default_factory=list)
-    feedback_text: str = ""
+    feedback_messages: Optional[List[ToolCall]] = None
+    feedback_text: str | None = None
     reward: float = 0.0
     terminated: bool = False
 

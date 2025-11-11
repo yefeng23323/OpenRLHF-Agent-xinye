@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 from openrlhf_agent.chat_protocol import ChatProtocol
 from openrlhf_agent.core import StepOutcome, Message, Action
@@ -71,7 +71,7 @@ class AgentSession:
         assistant_message = Message(
             role="assistant",
             content=action.content,
-            tool_calls=action.tool_calls,
+            tool_calls=action.tool_calls or None,
         )
         parse_error = self._has_parse_error(action)
         if parse_error and not action.tool_calls and raw_text is not None:
@@ -80,7 +80,7 @@ class AgentSession:
         self.history.append(assistant_message)
 
         # Observation messages
-        observations, reward, terminated, _ = self.environment.step(
+        observations, reward, terminated = self.environment.step(
             action, label=label, runtime=runtime
         )
 

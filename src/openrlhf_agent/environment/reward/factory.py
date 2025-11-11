@@ -25,12 +25,8 @@ def make_reward(
     name: Optional[str] = None,
     *,
     config: Optional[dict] = None,
-    strategy: Optional[RewardStrategy] = None,
 ) -> RewardStrategy:
     """Instantiate a reward strategy by name or return the provided strategy."""
-
-    if strategy is not None:
-        return strategy
 
     resolved_name = (name or _DEFAULT_STRATEGY).lower()
     try:

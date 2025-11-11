@@ -14,7 +14,7 @@ logger.setLevel(logging.INFO)
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
         environment = make_environment(
-            name="default",
+            name="single_turn",
             result_reward=MatchingReward(
                 correct_score=1.0,
                 miss_score=0.0
