@@ -1,9 +1,9 @@
-"""Qwen3 chat protocol rendering and parsing helpers."""
+"""Qwen3 thinking chat protocol rendering and parsing helpers."""
 
 import json
 import re
 from textwrap import dedent
-from typing import Any, ClassVar, List, Sequence
+from typing import ClassVar, List, Optional, Tuple
 
 from openrlhf_agent.core import Message, Action, ToolCall
 from openrlhf_agent.chat_protocol.base import ChatProtocol
@@ -113,8 +113,7 @@ QWEN3_TOOL_RESPONSE_REGEX = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
-
-class Qwen3InstructProtocol(ChatProtocol):
+class Qwen3ThinkingProtocol(ChatProtocol):
     """Render Qwen3 messages and parse tool call annotations."""
 
     chat_template: ClassVar[str] = QWEN3_CHAT_TEMPLATE  # for render_messages
@@ -124,21 +123,26 @@ class Qwen3InstructProtocol(ChatProtocol):
         """Split assistant text into final content and tool calls."""
 
         raw = text or ""
+        reasoning_content, assistant_text = self._extract_reasoning_block(raw)
         content_parts: List[str] = []
         tool_calls: List[ToolCall] = []
 
         cursor = 0
-        for idx, match in enumerate(self.tool_call_regex.finditer(raw), 1):
+        for idx, match in enumerate(self.tool_call_regex.finditer(assistant_text), 1):
             start, end = match.span()
-            content_parts.append(raw[cursor:start])
+            content_parts.append(assistant_text[cursor:start])
             payload = match.group("body").strip()
             tool_calls.append(self._parse_call(payload, idx=idx))
             cursor = end
 
-        content_parts.append(raw[cursor:])
+        content_parts.append(assistant_text[cursor:])
         content = "".join(content_parts).strip()
 
-        return Action(content=content or None, tool_calls=tool_calls or None)
+        return Action(
+            content=content or None,
+            tool_calls=tool_calls or None,
+            reasoning_content=reasoning_content,
+        )
 
     @staticmethod
     def _parse_call(raw_payload: str, idx: int) -> ToolCall:
@@ -160,6 +164,22 @@ class Qwen3InstructProtocol(ChatProtocol):
 
         return ToolCall(call_id=f"call_{idx}", name=name, arguments=arguments)
 
+    @staticmethod
+    def _extract_reasoning_block(text: str) -> Tuple[Optional[str], str]:
+        """Split out the <think></think> block from assistant text."""
+
+        raw = text or ""
+        lower_raw = raw.lower()
+        end_tag = "</think>"
+
+        end_idx = lower_raw.find(end_tag)
+        if end_idx == -1:
+            return None, raw
+
+        reasoning = raw[:end_idx].strip()
+        remainder = raw[end_idx + len(end_tag) :].lstrip()
+        return reasoning or None, remainder
+
     def parse_messages_from_completion_text(
         self,
         completion_text: str,
@@ -180,7 +200,8 @@ class Qwen3InstructProtocol(ChatProtocol):
                     Message(
                         role="assistant",
                         content=parsed.content,
-                        tool_calls=parsed.tool_calls,
+                        tool_calls=list(parsed.tool_calls or []),
+                        reasoning_content=parsed.reasoning_content,
                     )
                 )
                 continue
@@ -198,7 +219,7 @@ class Qwen3InstructProtocol(ChatProtocol):
 
 
 if __name__ == "__main__":
-    protocol = Qwen3InstructProtocol()
+    protocol = Qwen3ThinkingProtocol()
     demo_messages = [
         {"role": "system", "content": "You are a concise assistant."},
         {"role": "user", "content": "Give me one interesting fact about Mars."},

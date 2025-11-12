@@ -23,6 +23,7 @@ class Action(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
     refusal: Optional[str] = None
+    reasoning_content: Optional[str] = None
 
 
 class Message(BaseModel):

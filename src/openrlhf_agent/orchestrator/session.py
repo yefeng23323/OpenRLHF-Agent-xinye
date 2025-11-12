@@ -22,7 +22,7 @@ class AgentSession:
     def _has_parse_error(action: Action) -> bool:
         if action.refusal:
             return True
-        return any(call.refusal for call in action.tool_calls)
+        return action.tool_calls and any(call.refusal for call in action.tool_calls)
 
     def _prepare_history(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]]) -> None:
         """Reset the chat history and optionally seed prior turns."""
@@ -36,8 +36,9 @@ class AgentSession:
             if not text:
                 return
             parsed_messages = self.protocol.parse_messages_from_completion_text(text)
-            if parsed_messages and parsed_messages[0].role == "system":
-                parsed_messages = parsed_messages[1:]
+            # It will have 2 system
+            # if parsed_messages and parsed_messages[0].role == "system":
+            #     parsed_messages = parsed_messages[1:]
             if parsed_messages:
                 self.history.extend(parsed_messages)
             return
@@ -72,11 +73,13 @@ class AgentSession:
             role="assistant",
             content=action.content,
             tool_calls=action.tool_calls or None,
+            reasoning_content=action.reasoning_content,
         )
         parse_error = self._has_parse_error(action)
         if parse_error and not action.tool_calls and raw_text is not None:
             # Preserve the unparsed text so the user can see what went wrong.
             assistant_message.content = raw_text
+            assistant_message.reasoning_content = None
         self.history.append(assistant_message)
 
         # Observation messages
