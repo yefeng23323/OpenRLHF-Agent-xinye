@@ -9,11 +9,11 @@
   - `agentkit/session` is the training/eval entry point. It calls the environment, stitches prompts, and runs the reward pipeline.
   - `agentkit/runtime` is a light wrapper around the session that drives the rollout loop with the LLM backend.
   - `agentkit/protocols` keeps concrete chat codecs such as Qwen3 instruct/thinking in one place.
-- `backends/`: defines the `LLMEngine` interface and ships an OpenAI-compatible engine. New providers can live under `backends/providers`.
-- `agentkit/factory.py`: high-level builders (`build_environment`, `build_session`, `build_runtime`, …) to cut down boilerplate.
+- `backends/`: defines the `LLMEngine` interface and ships an OpenAI-compatible engine. New providers can live under `backends/hub`.
+- `agentkit/factory.py`: high-level helpers such as `build_environment` and `build_protocol` to cut down boilerplate when wiring components.
 
 ## Data flow
-1. Call `agentkit.build_session` for training or `agentkit.build_runtime` for inference. You can also wire `Environment + ChatProtocol + LLMEngine + RewardPipeline` manually.
+1. Instantiate `AgentSession` for training or `AgentRuntime` for inference by wiring `Environment + ChatProtocol + LLMEngine + RewardPipeline`.
 2. `AgentSession.initialize` resets the environment, clears the `Conversation`, and renders the first prompt with the current tool manifest.
 3. Each reasoning step:
    - The runtime or trainer asks the LLM backend for the next action text.
@@ -23,8 +23,8 @@
 4. The runtime appends fresh observation prompts into the streaming token loop and surfaces the final assistant reply when `done` is true.
 
 ## Extending the system
-- Reward: implement `ResultRewardStrategy` or `ProcessRewardStrategy` under `agentkit/rewards`, then plug it into `RewardPipeline` or register it with `register_result_reward`.
+- Reward: implement `ResultRewardStrategy` or `ProcessRewardStrategy` under `agentkit/rewards`, then wire it into your `RewardPipeline`.
 - Tool: subclass `ToolBase` inside `agentkit/tools` and register it via `ToolRegistry`.
 - Environment: add a class under `agentkit/environments`, then register it so `build_environment` can resolve it.
 - Protocol: implement a `ChatProtocol` subclass under `agentkit/protocols` and register it for `build_protocol`.
-- Backend: implement `LLMEngine` under `backends/providers` and pass it through the `engine_factory` argument of `agentkit.build_runtime`.
+- Backend: implement `LLMEngine` under `backends/hub` and inject it into `AgentRuntime` (or your own runtime builder) via the constructor.
