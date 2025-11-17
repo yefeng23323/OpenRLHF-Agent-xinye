@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from openrlhf_agent.utils.types import Action
-from openrlhf_agent.agentkit.rewards.base import ResultRewardStrategy
+
+from ..base import ResultRewardStrategy
 
 
 @dataclass
@@ -56,6 +57,3 @@ class MatchingReward(ResultRewardStrategy):
                 return self.score_response(answer, label)
 
         return 0.0
-
-
-__all__ = ["MatchingReward"]

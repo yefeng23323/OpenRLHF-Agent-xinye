@@ -1,8 +1,9 @@
 """Reward strategy helpers."""
 
-from .base import ProcessRewardStrategy, ResultRewardStrategy
-from .result_hub import MatchingReward
 from .pipeline import RewardPipeline
+from .process_rewards.base import ProcessRewardStrategy
+from .result_rewards import MatchingReward
+from .result_rewards.base import ResultRewardStrategy
 
 __all__ = [
     "ResultRewardStrategy",

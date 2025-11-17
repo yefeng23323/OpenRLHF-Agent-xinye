@@ -1,4 +1,4 @@
-"""Reward strategy abstractions."""
+"""Base abstraction for result reward strategies."""
 
 from __future__ import annotations
 
@@ -19,19 +19,3 @@ class ResultRewardStrategy(ABC):
         label: Optional[str],
     ) -> float:
         """Return the reward for the assistant's final answer."""
-
-
-class ProcessRewardStrategy(ABC):
-    """Scores intermediate planning/tool steps."""
-
-    @abstractmethod
-    def score(
-        self,
-        *,
-        action: Action,
-        label: Optional[str],
-    ) -> float:
-        """Return the reward associated with the latest tool usage."""
-
-
-__all__ = ["ResultRewardStrategy", "ProcessRewardStrategy"]

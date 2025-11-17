@@ -4,14 +4,20 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Type
 
-from openrlhf_agent.agentkit.environments import Environment, SingleTurnEnvironment, FunctionCallEnvironment
+from openrlhf_agent.agentkit.environments import (
+    Environment,
+    SingleTurnEnvironment,
+    FunctionCallEnvironment
+)
 from openrlhf_agent.agentkit.protocols import (
     ChatProtocol,
     Qwen3InstructProtocol,
     Qwen3ThinkingProtocol,
 )
-from openrlhf_agent.agentkit.rewards.base import ResultRewardStrategy
-from openrlhf_agent.agentkit.rewards.result_hub import MatchingReward
+from openrlhf_agent.agentkit.rewards.result_rewards import (
+    ResultRewardStrategy,
+    MatchingReward,
+)
 
 
 _DEFAULT_ENVIRONMENT = "single_turn"
@@ -69,10 +75,3 @@ def build_protocol(name: Optional[str] = None) -> ChatProtocol:
     except KeyError as exc:
         raise ValueError(f"Unknown chat protocol '{name}'.") from exc
     return protocol_cls()
-
-
-__all__ = [
-    "build_environment",
-    "build_protocol",
-    "build_result_reward",
-]

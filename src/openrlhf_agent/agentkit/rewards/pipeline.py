@@ -6,7 +6,8 @@ from typing import Optional
 
 from openrlhf_agent.utils.types import Action
 
-from .base import ProcessRewardStrategy, ResultRewardStrategy
+from .process_rewards.base import ProcessRewardStrategy
+from .result_rewards.base import ResultRewardStrategy
 
 
 class RewardPipeline:
@@ -15,14 +16,14 @@ class RewardPipeline:
     def __init__(
         self,
         *,
-        result_reward: Optional[ResultRewardStrategy] = None,
         process_reward: Optional[ProcessRewardStrategy] = None,
+        result_reward: Optional[ResultRewardStrategy] = None,
     ) -> None:
-        self._result_reward = result_reward
         self._process_reward = process_reward
+        self._result_reward = result_reward
 
         assert (
-            self._result_reward is not None or self._process_reward is not None
+            self._process_reward is not None or self._result_reward is not None
         ), "RewardPipeline requires at least one reward strategy"
 
     def score(
