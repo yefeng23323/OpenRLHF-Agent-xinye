@@ -1,26 +1,34 @@
 """
-Minimal agent runtime for OpenRLHF-style tooling.
+OpenRLHF Agent runtime and supporting building blocks.
 
-Only the core entry points are re-exported here; import from submodules for
-advanced customization.
-  - `orchestrator` hosts AgentRuntime/AgentSession orchestration.
-  - `environment` defines the default think/final environment & helpers.
-  - `chat_protocol` provides the Qwen3 prompt codec used in examples.
-  - `engine` wraps language-model backends (currently an OpenAI-compatible engine).
+Top-level layout:
+- `agentkit/` hosts environments, protocols, rewards/tools, the session buffer, runtime loop, and helper factories.
+- `backends/` wraps provider-specific language model engines.
+- `utils/types/` stores the shared Action/Message/ToolCall dataclasses used across modules.
 """
 
 __version__ = "0.0.1"
 
-from openrlhf_agent.chat_protocol import make_chat_protocol
-from openrlhf_agent.environment import make_environment
-from openrlhf_agent.engine import OpenAIEngine
-from openrlhf_agent.orchestrator import AgentRuntime, AgentSession
+from openrlhf_agent.agentkit import build_environment, build_protocol, build_runtime, build_session
+from openrlhf_agent.agentkit.environments import Environment
+from openrlhf_agent.agentkit.environments.hub import FunctionCallEnvironment, SingleTurnEnvironment
+from openrlhf_agent.agentkit.protocols import ChatProtocol
+from openrlhf_agent.agentkit.runtime import AgentRuntime
+from openrlhf_agent.agentkit.session import AgentSession
+from openrlhf_agent.backends import LLMEngine, OpenAIEngine
 
 __all__ = [
     "__version__",
     "AgentRuntime",
     "AgentSession",
-    "make_environment",
-    "make_chat_protocol",
+    "Environment",
+    "FunctionCallEnvironment",
+    "SingleTurnEnvironment",
+    "LLMEngine",
     "OpenAIEngine",
+    "ChatProtocol",
+    "build_environment",
+    "build_protocol",
+    "build_runtime",
+    "build_session",
 ]
