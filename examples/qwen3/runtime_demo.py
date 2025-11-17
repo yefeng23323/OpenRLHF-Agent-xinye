@@ -1,4 +1,7 @@
-from openrlhf_agent import AgentRuntime, OpenAIEngine, build_environment, build_protocol
+from openrlhf_agent.backends import OpenAIEngine
+from openrlhf_agent.agentkit.runtime import AgentRuntime
+from openrlhf_agent.agentkit.factory import build_environment, build_protocol
+
 
 if __name__ == "__main__":
     engine = OpenAIEngine(

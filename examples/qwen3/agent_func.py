@@ -2,8 +2,11 @@ import logging
 import torch
 
 from typing import Any, Dict
-from openrlhf_agent.agentkit.rewards import MatchingReward, RewardPipeline
-from openrlhf_agent import AgentSession, build_environment, build_protocol
+
+from openrlhf_agent.agentkit.rewards import RewardPipeline
+from openrlhf_agent.agentkit.session import AgentSession
+from openrlhf_agent.agentkit.factory import build_environment, build_protocol, build_result_reward
+
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
 
 logging.basicConfig()
@@ -16,7 +19,10 @@ class AgentInstance(AgentInstanceBase):
         environment = build_environment(name="function_call")
         protocol = build_protocol(name="qwen3_thinking")
         pipeline = RewardPipeline(
-            result_reward=MatchingReward(correct_score=1.0, miss_score=0.0)
+            result_reward=build_result_reward(
+                name="matching",
+                config=dict(correct_score=1.0, miss_score=0.0)
+            )
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)
 
