@@ -9,7 +9,7 @@ Top-level layout:
 
 __version__ = "0.0.1"
 
-from openrlhf_agent.agentkit import build_environment, build_protocol, build_runtime, build_session
+from openrlhf_agent.agentkit import build_environment, build_protocol
 from openrlhf_agent.agentkit.environments import Environment
 from openrlhf_agent.agentkit.environments.hub import FunctionCallEnvironment, SingleTurnEnvironment
 from openrlhf_agent.agentkit.protocols import ChatProtocol
@@ -29,6 +29,4 @@ __all__ = [
     "ChatProtocol",
     "build_environment",
     "build_protocol",
-    "build_runtime",
-    "build_session",
 ]
