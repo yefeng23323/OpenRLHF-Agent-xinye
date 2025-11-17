@@ -13,17 +13,15 @@ logger.setLevel(logging.INFO)
 
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
-        environment = build_environment(
-            name="single_turn",
-        )
-        protocol = build_protocol("qwen3_instruct")
+        environment = build_environment(name="single_turn")
+        protocol = build_protocol(name="qwen3_instruct")
         pipeline = RewardPipeline(
             result_reward=MatchingReward(
                 correct_score=1.0,
                 miss_score=0.0
             )
         )
-        self.session = AgentSession(environment, protocol, reward_pipeline=pipeline)
+        self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)
 
     async def reset(self, states: dict, **kwargs):
         prompt = self.session.initialize(states.get("observation"))

@@ -37,9 +37,9 @@ class RewardPipeline:
         reward = 0.0
 
         if self._process_reward:
-            reward += self._process_reward.score_process(action=action, label=label)
+            reward += self._process_reward.score(action=action, label=label)
 
         if self._result_reward and done:
-            reward += self._result_reward.score_result(action=action, label=label)
+            reward += self._result_reward.score(action=action, label=label)
 
         return reward
