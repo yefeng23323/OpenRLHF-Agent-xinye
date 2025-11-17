@@ -1,12 +1,12 @@
 """Qwen3 chat protocol rendering and parsing helpers."""
 
-import json
 import re
+import json
 from textwrap import dedent
-from typing import Any, ClassVar, List, Sequence
+from typing import ClassVar, List
 
 from openrlhf_agent.utils.types import Action, Message, ToolCall
-from ..base import ChatProtocol
+from openrlhf_agent.agentkit.protocols.base import ChatProtocol
 
 
 # Mirrors the upstream Qwen3 chat formatting rules.

@@ -1,12 +1,12 @@
 """Qwen3 thinking chat protocol rendering and parsing helpers."""
 
-import json
 import re
+import json
 from textwrap import dedent
 from typing import ClassVar, List, Optional, Tuple
 
 from openrlhf_agent.utils.types import Action, Message, ToolCall
-from ..base import ChatProtocol
+from openrlhf_agent.agentkit.protocols.base import ChatProtocol
 
 
 # Mirrors the upstream Qwen3 chat formatting rules.
@@ -233,6 +233,14 @@ if __name__ == "__main__":
                     "function": {"name": "get_mars_fact", "arguments": {"topic": "volcanoes"}},
                 }
             ],
+        },
+        {
+            "role": "tool",
+            "content": '{"fact": "Olympus Mons is the tallest volcano in the solar system."}',
+        },
+        {
+            "role": "tool",
+            "content": '{"fact": "Olympus Mons is the tallest volcano in the solar system."}',
         },
         {
             "role": "tool",

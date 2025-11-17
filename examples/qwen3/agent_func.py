@@ -13,13 +13,10 @@ logger.setLevel(logging.INFO)
 
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
-        environment = build_environment(name="default")
-        protocol = build_protocol(name="qwen3_instruct")
+        environment = build_environment(name="function_call")
+        protocol = build_protocol(name="qwen3_thinking")
         pipeline = RewardPipeline(
-            result_reward=MatchingReward(
-                correct_score=1.0,
-                miss_score=0.0
-            )
+            result_reward=MatchingReward(correct_score=1.0, miss_score=0.0)
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)
 
