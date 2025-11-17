@@ -12,7 +12,7 @@ class ResultRewardStrategy(ABC):
     """Scores the final user-visible reply."""
 
     @abstractmethod
-    def score_result(
+    def score(
         self,
         *,
         action: Action,
@@ -25,7 +25,7 @@ class ProcessRewardStrategy(ABC):
     """Scores intermediate planning/tool steps."""
 
     @abstractmethod
-    def score_process(
+    def score(
         self,
         *,
         action: Action,

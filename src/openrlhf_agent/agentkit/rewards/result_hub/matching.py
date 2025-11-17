@@ -26,7 +26,7 @@ class MatchingReward(ResultRewardStrategy):
         prediction = response.strip()
         return self.correct_score if prediction == target else self.miss_score
 
-    def score_result(
+    def score(
         self,
         *,
         action: Action,
@@ -37,18 +37,20 @@ class MatchingReward(ResultRewardStrategy):
         if label is None:
             return 0.0
 
+        # Reward response
         final_text = (action.content or "").strip()
         if final_text and not action.tool_calls:
             return self.score_response(final_text, label)
 
+        # Reward final tool
         for tool_call in action.tool_calls or []:
-            if tool_call is None:
+            if tool_call is None or (tool_call.name or "").strip() != "final":
                 continue
-            if (tool_call.name or "").strip() != "final":
-                continue
+
             arguments = tool_call.arguments or {}
             if not isinstance(arguments, dict):
                 continue
+
             answer = str(arguments.get("answer", "")).strip()
             if answer:
                 return self.score_response(answer, label)

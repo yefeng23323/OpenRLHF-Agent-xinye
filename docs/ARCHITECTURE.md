@@ -1,7 +1,7 @@
 # OpenRLHF Agent 架构概览
 
 ## 模块分层
-- `utils/types`: 约定 Action、Message、ToolCall、StepOutcome 等领域模型，任何层都可以安全依赖。
+- `utils/types`: 约定 Action、Message、ToolCall、Observation 等领域模型，任何层都可以安全依赖。
 - `agentkit/`: 统一收纳协议、工具、奖励、环境、Session/Runtime 以及工厂方法。
   - `agentkit/tools` 仅描述工具 schema 与运行期注册。
   - `agentkit/rewards` 脱离环境，以 `RewardPipeline` 组合 process/result 策略（默认匹配策略为 `MatchingReward`）。

@@ -17,15 +17,6 @@ class ToolCall(BaseModel):
     refusal: Optional[str] = None
 
 
-class Action(BaseModel):
-    """Assistant reply split into text and tool calls."""
-
-    content: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None
-    refusal: Optional[str] = None
-    reasoning_content: Optional[str] = None
-
-
 class Message(BaseModel):
     """Single chat turn tracked inside the session memory."""
 
@@ -36,14 +27,23 @@ class Message(BaseModel):
 
 
 @dataclass
-class StepOutcome:
+class Action:
+    """Assistant reply split into text and tool calls."""
+
+    content: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
+    refusal: Optional[str] = None
+    reasoning_content: Optional[str] = None
+
+
+@dataclass
+class Observation:
     """Outcome produced after applying an action to the environment."""
 
     step_index: int
     feedback_messages: Optional[List[Message]] = None
     feedback_text: str | None = None
-    reward: float = 0.0
-    terminated: bool = False
+    done: bool = False
 
 
 class Conversation:
@@ -76,6 +76,3 @@ class Conversation:
         """Expose a shallow copy for inspection or debugging."""
 
         return [message.model_dump(exclude_none=True) for message in self._messages]
-
-
-__all__ = ["ToolCall", "Action", "Message", "StepOutcome", "Conversation"]

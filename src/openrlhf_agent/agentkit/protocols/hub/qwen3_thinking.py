@@ -141,7 +141,7 @@ class Qwen3ThinkingProtocol(ChatProtocol):
         return Action(
             content=content or None,
             tool_calls=tool_calls or None,
-            reasoning_content=reasoning_content,
+            reasoning_content=reasoning_content or None,
         )
 
     @staticmethod
