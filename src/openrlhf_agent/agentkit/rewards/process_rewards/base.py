@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from openrlhf_agent.utils.types import Action
 
@@ -16,6 +16,6 @@ class ProcessRewardStrategy(ABC):
         self,
         *,
         action: Action,
-        label: Optional[str],
+        label: Optional[Any],
     ) -> float:
         """Return the reward associated with the latest tool usage."""

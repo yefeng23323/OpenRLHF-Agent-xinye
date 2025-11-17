@@ -17,6 +17,7 @@ from openrlhf_agent.agentkit.protocols import (
 from openrlhf_agent.agentkit.rewards.result_rewards import (
     ResultRewardStrategy,
     MatchingReward,
+    GRMJudgeReward,
 )
 
 
@@ -35,6 +36,7 @@ _PROTOCOL_REGISTRY: Dict[str, Type[ChatProtocol]] = {
 _DEFAULT_RESULT_REWARD = "matching"
 _RESULT_REWARD_REGISTRY: Dict[str, Type[ResultRewardStrategy]] = {
     "matching": MatchingReward,
+    "grm": GRMJudgeReward,
 }
 
 

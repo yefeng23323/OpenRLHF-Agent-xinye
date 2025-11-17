@@ -1,8 +1,7 @@
-"""Shared domain models used across the agent runtime."""
+"""Conversation helper plus supporting message and tool-call models."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from pydantic import BaseModel
@@ -24,26 +23,6 @@ class Message(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
     reasoning_content: Optional[str] = None  # used by reasoning-capable backends
-
-
-@dataclass
-class Action:
-    """Assistant reply split into text and tool calls."""
-
-    content: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None
-    refusal: Optional[str] = None
-    reasoning_content: Optional[str] = None
-
-
-@dataclass
-class Observation:
-    """Outcome produced after applying an action to the environment."""
-
-    step_index: int
-    feedback_messages: Optional[List[Message]] = None
-    feedback_text: str | None = None
-    done: bool = False
 
 
 class Conversation:

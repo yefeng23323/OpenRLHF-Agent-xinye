@@ -89,6 +89,17 @@ You will see tool traces and the final answer printed to the console.
 
 `examples/qwen3/agent_func.py` exposes the `AgentInstance` / `AgentExecutor` hooks required by OpenRLHF. Run `examples/qwen3/train_reinforce_agent.sh` (set `DATASET_PATH`) or integrate the functions into your own Ray jobs to collect trajectories and train policies.
 
+Need a reward model hosted behind a GRM-compatible endpoint? Use `examples/qwen3/agent_func_grm.py`, export the GRM connection info, and point OpenRLHF at this module instead:
+
+```bash
+export GRM_BASE_URL="https://your-grm-endpoint/v1"
+export GRM_API_KEY="sk-..."
+export GRM_MODEL="grm-judge"
+# edit examples/qwen3/train_reinforce_agent.sh so that
+#   AGNET_FUNC_PATH=".../examples/qwen3/agent_func_grm.py"
+# then launch your preferred OpenRLHF training entrypoint
+```
+
 ## 🛠️ Customize the stack
 
 ### Add a tool
