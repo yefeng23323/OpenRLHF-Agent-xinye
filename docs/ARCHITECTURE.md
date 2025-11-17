@@ -1,30 +1,49 @@
 # OpenRLHF Agent Architecture
 
-## Module layout
-- `utils/types`: shared domain models such as `Action`, `Message`, `ToolCall`, and `Observation`. Every layer can depend on them safely.
-- `agentkit/`: home for chat protocols, tools, rewards, environments, the session/runtime objects, and factory helpers.
-  - `agentkit/tools` defines tool schemas and exposes runtime registration helpers.
-  - `agentkit/rewards` hosts independent reward strategies that the `RewardPipeline` can combine (default result reward is `MatchingReward`).
-  - `agentkit/environments` handles tool orchestration and system prompts; the session decides which rewards to trigger based on each `Action`.
-  - `agentkit/session` is the training/eval entry point. It calls the environment, stitches prompts, and runs the reward pipeline.
-  - `agentkit/runtime` is a light wrapper around the session that drives the rollout loop with the LLM backend.
-  - `agentkit/protocols` keeps concrete chat codecs such as Qwen3 instruct/thinking in one place.
-- `backends/`: defines the `LLMEngine` interface and ships an OpenAI-compatible engine. New providers can live under `backends/hub`.
-- `agentkit/factory.py`: high-level helpers such as `build_environment` and `build_protocol` to cut down boilerplate when wiring components.
+OpenRLHF-Agent keeps reinforcement learning rollouts and production inference on the same set of primitives: `Environment`, `ChatProtocol`, `AgentSession`, `AgentRuntime`, and provider-specific `LLMEngine`s. This document highlights how those components are wired inside `src/openrlhf_agent`.
 
-## Data flow
-1. Instantiate `AgentSession` for training or `AgentRuntime` for inference by wiring `Environment + ChatProtocol + LLMEngine + RewardPipeline`.
-2. `AgentSession.initialize` resets the environment, clears the `Conversation`, and renders the first prompt with the current tool manifest.
-3. Each reasoning step:
-   - The runtime or trainer asks the LLM backend for the next action text.
-   - The protocol parses the text into an `Action` (tool calls, reasoning traces, refusal flags, etc.).
-   - The environment executes tool calls and returns observations, a `done` flag, and execution metadata (for example `used_tools` or `final_submitted`).
-   - The session converts observations back into prompt chunks and, in training mode, feeds the `Action` into the `RewardPipeline`.
-4. The runtime appends fresh observation prompts into the streaming token loop and surfaces the final assistant reply when `done` is true.
+## Module layout
+
+- `utils/types.py`: shared dataclasses and Pydantic models (`Message`, `Action`, `ToolCall`, `Observation`, and `Conversation`).
+- `agentkit/session.py`: stateful bridge between chat protocols and environments. Tracks the conversation transcript, renders prompts with the current tool manifest, and exposes `initialize`, `step`, and `step_from_text`.
+- `agentkit/runtime.py`: inference-oriented driver that streams tokens via an `LLMEngine`, feeds them through `AgentSession`, and yields messages for the caller.
+- `agentkit/environments/`: base contract plus the default `hub/function_call.py` (tool execution with JSON hints) and `hub/single_turn.py`.
+- `agentkit/tools/`: `ToolBase` plus built-in helpers (`CommentaryTool`, `ThinkTool`, `FinalTool`) that can be passed into environments.
+- `agentkit/protocols/`: codecs and chat templates. `hub/qwen3_instruct.py` and `hub/qwen3_thinking.py` render prompts and parse `<tool_call>` payloads.
+- `agentkit/rewards/`: reward strategy base classes, result/process registries, and the `RewardPipeline` that composes them.
+- `agentkit/factory.py`: `build_environment`, `build_protocol`, and `build_result_reward` helpers to resolve registry entries by name.
+- `backends/`: `LLMEngine` interface plus the OpenAI/vLLM-compatible HTTP backend living in `hub/openai.py`.
+- `examples/qwen3/`: end-to-end demos (runtime streaming, OpenRLHF agent wrappers, and REINFORCE++ scripts).
+
+## Runtime data flow
+
+1. **Assembly**  
+   - Pick an `Environment` (`FunctionCallEnvironment` or custom).  
+   - Choose a `ChatProtocol` implementation via `build_protocol`.  
+   - Instantiate an `LLMEngine` such as `OpenAIEngine`.  
+   - (Optional) create a `RewardPipeline` when training.  
+   - Build `AgentSession(environment=..., protocol=..., reward_pipeline=...)` for training flows or wrap it with `AgentRuntime(engine, environment, protocol)` for inference.
+
+2. **Initialization**  
+   - `AgentRuntime.run_steps` (or trainers) call `AgentSession.initialize(...)`.  
+   - The session resets environment step counters, seeds the `Conversation` with the environment system prompt, optionally extends it with prior turns, and renders the first prompt using the protocol template plus the tool manifest returned by `environment.tools_manifest()`.  
+   - `AgentRuntime` tokenizes this prompt via `LLMEngine.tokenize` to bootstrap streaming.
+
+3. **Stepping**  
+   - For each turn, `LLMEngine.generate` produces token IDs and decoded assistant text.  
+   - `AgentSession.step_from_text` forwards the text to the protocol parser, yielding an `Action` (plain response, tool calls, or refusals).  
+   - The session persists the assistant message in the `Conversation` and invokes `environment.step(action)` to execute tool calls and emit observation strings plus a `done` flag.  
+   - Tool outputs are rendered back into prompt chunks with `protocol.render_messages(..., add_generation_prompt=True)` so the next LLM call sees both the assistant reply and tool feedback.  
+   - When a `RewardPipeline` is attached and a label is provided, `AgentSession.step` scores the action via optional process and result strategies.
+
+4. **Streaming + termination**  
+   - `AgentRuntime` yields each assistant/tool message to the caller (`run_steps`) or returns the final assistant text (`run_final`).  
+   - Iteration stops when the environment signals `done` or `max_steps` is hit, in which case a final assistant warning is produced.
 
 ## Extending the system
-- Reward: implement `ResultRewardStrategy` or `ProcessRewardStrategy` under `agentkit/rewards`, then wire it into your `RewardPipeline`.
-- Tool: subclass `ToolBase` inside `agentkit/tools` and register it via `ToolRegistry`.
-- Environment: add a class under `agentkit/environments`, then register it so `build_environment` can resolve it.
-- Protocol: implement a `ChatProtocol` subclass under `agentkit/protocols` and register it for `build_protocol`.
-- Backend: implement `LLMEngine` under `backends/hub` and inject it into `AgentRuntime` (or your own runtime builder) via the constructor.
+
+- **Rewards**: implement `ResultRewardStrategy` or `ProcessRewardStrategy` under `agentkit/rewards/`, then compose them with `RewardPipeline` before passing it to `AgentSession`.
+- **Tools**: subclass `ToolBase` in `agentkit/tools/` and supply instances to your environment constructor or call `env.register_tool(...)`.
+- **Environments**: extend `Environment` and override `step` to enforce custom guardrails, tool schemas, or prompt policies. Register it in `agentkit/factory._ENVIRONMENT_REGISTRY` if you want `build_environment("name")` to discover it.
+- **Protocols**: create a `ChatProtocol` subclass inside `agentkit/protocols/`, implement render/parse helpers, and register it so `build_protocol("name")` resolves it.
+- **Backends**: implement `LLMEngine` under `backends/` (or `backends/hub/`) to integrate a new inference provider, then pass it to `AgentRuntime`.

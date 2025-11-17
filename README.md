@@ -32,12 +32,17 @@ AgentRuntime
 
 ### Where the pieces live
 
-- `src/openrlhf_agent/core/`: shared chat, tool-call, and step-result models.
-- `src/openrlhf_agent/orchestrator/`: runtime loop, `AgentRuntime`, the `Conversation`, and `AgentSession` orchestration.
-- `src/openrlhf_agent/environment/`: default environment, tool wiring, reward hooks, and tool base classes.
-- `src/openrlhf_agent/chat_protocol/`: prompt builders, `<tool_call>` parsing, and protocol factory helpers.
-- `src/openrlhf_agent/engine/`: OpenAI-compatible `LLMEngine` base and the default HTTP client.
-- `examples/qwen3/`: runnable demos for inference and reinforcement learning.
+- `src/openrlhf_agent/utils/types.py`: domain models (`Action`, `ToolCall`, `Observation`, `Conversation`) shared across the stack.
+- `src/openrlhf_agent/agentkit/session.py`: keeps chat history in sync with tool manifests and converts environment outputs back into prompts.
+- `src/openrlhf_agent/agentkit/runtime.py`: streaming runtime loop that binds the `LLMEngine` to an `AgentSession`.
+- `src/openrlhf_agent/agentkit/environments/`: base class plus `hub/function_call.py` (tool calling + plain-text finals) and `hub/single_turn.py`.
+- `src/openrlhf_agent/agentkit/tools/`: `ToolBase` and bundled helpers such as `CommentaryTool`, `FinalTool`, and `ThinkTool`.
+- `src/openrlhf_agent/agentkit/rewards/`: result/process reward strategies and the `RewardPipeline` glue used during RL training.
+- `src/openrlhf_agent/agentkit/protocols/`: provider codecs and templates (Qwen-3 instruct and thinking modes live in `hub/`).
+- `src/openrlhf_agent/backends/`: `LLMEngine` contract and the OpenAI/vLLM-compatible HTTP client (`hub/openai.py`).
+- `examples/qwen3/`: runnable demos for inference serving, OpenRLHF data collection, and REINFORCE++ training loops.
+
+See `docs/ARCHITECTURE.md` for a deeper dive into how these modules interact.
 
 ## 🚀 Quick start
 
@@ -76,7 +81,7 @@ The script wires together:
 
 - `OpenAIEngine` pointing at a vLLM/OpenAI-compatible endpoint.
 - `FunctionCallEnvironment` with the `commentary` tool, feedback hooks, and plain-text finals.
-- `build_protocol("qwen3")` for prompt rendering and `<tool_call>` parsing.
+- `build_protocol("qwen3_thinking")` for prompt rendering and `<tool_call>` parsing.
 
 You will see tool traces and the final answer printed to the console.
 
@@ -88,25 +93,30 @@ You will see tool traces and the final answer printed to the console.
 
 ### Add a tool
 
-1. Subclass `ToolBase` from `environment/tools.py`.
+1. Subclass `ToolBase` from `src/openrlhf_agent/agentkit/tools/base.py`.
 2. Implement `call(self, context, **kwargs)` to return visible output or structured JSON.
-3. Register the tool on your environment (`env.register_tool(...)`) before starting the runtime.
+3. Pass the tool into your environment (`FunctionCallEnvironment(tools=[...])`) or register it dynamically via `env.register_tool(...)`.
 
 ### Tailor the environment
 
-- Supply custom `ResultRewardStrategy` / `ProcessRewardStrategy` instances via `result_reward` / `process_reward` to specialize final vs process scoring.
-- Extend `step` to orchestrate multiple tool calls or enforce guardrails.
-- Emit hidden hints through `_internal_obs` to steer the policy between turns.
+- Subclass `Environment` from `src/openrlhf_agent/agentkit/environments/base.py` to decide how tool calls are validated, executed, and terminated.
+- Customize prompts, `max_steps`, and default tools when instantiating `FunctionCallEnvironment` (see `hub/function_call.py` for reference).
+- Return structured observation strings to emit internal guardrail hints or UI-visible tool outputs.
+
+### Shape rewards
+
+- Compose a `RewardPipeline` with result/process strategies from `src/openrlhf_agent/agentkit/rewards/` (e.g., `MatchingReward`).
+- Pass the pipeline into `AgentSession(..., reward_pipeline=...)` so each `step_from_text` call can emit scalar rewards during RL training.
 
 ### Ship a new chat protocol
 
-- Subclass `ChatProtocol` in `agentkit/protocols/base.py`.
+- Subclass `ChatProtocol` in `src/openrlhf_agent/agentkit/protocols/base.py`.
 - Implement render + parse helpers for your provider format.
 - Expose it via `build_protocol` and pass it into `AgentRuntime`.
 
 ### Support another engine
 
-- Subclass `LLMEngine` in `engine/base.py`.
+- Subclass `LLMEngine` in `src/openrlhf_agent/backends/base.py`.
 - Implement `generate` and `tokenize` for your provider.
 - Instantiate the engine and supply it to `AgentRuntime`.
 
