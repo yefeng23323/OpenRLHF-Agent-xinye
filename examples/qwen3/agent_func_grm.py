@@ -31,9 +31,9 @@ class AgentInstance(AgentInstanceBase):
         pipeline = RewardPipeline(result_reward=build_result_reward(
             name="grm",
             config={
-                "model": "{model_name}",
-                "base_url": "{base_url}",
-                "api_key": "{api_key}",
+                "model": "qwen3",
+                "base_url": "http://0.0.0.0:8009/v1",
+                "api_key": "empty",
                 "correct_score": 1.0,
                 "format_score": 0.0,
                 "error_score": -0.1,
