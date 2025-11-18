@@ -124,6 +124,12 @@ class Qwen3ThinkingProtocol(ChatProtocol):
 
         raw = text or ""
         reasoning_content, assistant_text = self._extract_reasoning_block(raw)
+        if assistant_text is None:
+            return Action(
+                reasoning_content=reasoning_content or None,
+                refusal="Missing </think> tag. Keep this thought short and continue.",
+            )
+
         content_parts: List[str] = []
         tool_calls: List[ToolCall] = []
 
@@ -174,7 +180,7 @@ class Qwen3ThinkingProtocol(ChatProtocol):
 
         end_idx = lower_raw.find(end_tag)
         if end_idx == -1:
-            return None, raw
+            return raw, None
 
         reasoning = raw[:end_idx].strip()
         remainder = raw[end_idx + len(end_tag) :].lstrip()

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Dict
+from typing import Any, Dict
 
 from ..base import ToolBase
 
@@ -26,6 +26,3 @@ class ThinkTool(ToolBase):
 
     def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         return json.dumps({"ok": True}, ensure_ascii=False)
-
-
-__all__ = ["ThinkTool"]

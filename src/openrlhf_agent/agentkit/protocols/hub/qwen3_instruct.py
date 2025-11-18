@@ -138,7 +138,10 @@ class Qwen3InstructProtocol(ChatProtocol):
         content_parts.append(raw[cursor:])
         content = "".join(content_parts).strip()
 
-        return Action(content=content or None, tool_calls=tool_calls or None)
+        return Action(
+            content=content or None,
+            tool_calls=tool_calls or None,
+        )
 
     @staticmethod
     def _parse_call(raw_payload: str, idx: int) -> ToolCall:

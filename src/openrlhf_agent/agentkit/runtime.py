@@ -23,7 +23,7 @@ class AgentRuntime:
         max_new_tokens_per_step: int = 10240,
     ) -> None:
         self.engine = engine
-        self.session = AgentSession(environment, protocol)
+        self.session = AgentSession(environment=environment, protocol=protocol)
         self.max_new_tokens_per_step = max_new_tokens_per_step
 
     def _bootstrap_prompt_ids(self, messages: Sequence[Dict[str, Any]]) -> List[int]:
