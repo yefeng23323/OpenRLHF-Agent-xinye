@@ -24,5 +24,5 @@ class ThinkTool(ToolBase):
         "required": ["notes"],
     }
 
-    def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
+    async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         return json.dumps({"ok": True}, ensure_ascii=False)

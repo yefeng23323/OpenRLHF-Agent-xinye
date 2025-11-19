@@ -10,7 +10,7 @@ class LLMEngine(ABC):
     """Defines minimal methods required for a language model backend."""
 
     @abstractmethod
-    def generate(
+    async def generate(
         self,
         prompt: Optional[Union[str, List[int]]],
         max_tokens: int = 10240,
@@ -20,9 +20,8 @@ class LLMEngine(ABC):
         """Return generated token ids and the decoded text."""
 
     @abstractmethod
-    def tokenize(self, prompt: str) -> List[int]:
+    async def tokenize(self, prompt: str) -> List[int]:
         """Convert text into token ids understood by the backend."""
 
 
 __all__ = ["LLMEngine"]
-

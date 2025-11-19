@@ -26,7 +26,7 @@ class MatchingReward(ResultRewardStrategy):
         prediction = response.strip()
         return self.correct_score if prediction == target else self.miss_score
 
-    def score(
+    async def score(
         self,
         *,
         action: Action,

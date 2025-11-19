@@ -25,25 +25,25 @@ OpenRLHF-Agent keeps reinforcement learning rollouts and production inference on
    - Build `AgentSession(environment=..., protocol=..., reward_pipeline=...)` for training flows or wrap it with `AgentRuntime(engine, environment, protocol)` for inference.
 
 2. **Initialization**  
-   - `AgentRuntime.run_steps` (or trainers) call `AgentSession.initialize(...)`.  
+   - `AgentRuntime.run_steps` (or trainers) call `await AgentSession.initialize(...)`.  
    - The session resets environment step counters, seeds the `Conversation` with the environment system prompt, optionally extends it with prior turns, and renders the first prompt using the protocol template plus the tool manifest returned by `environment.tools_manifest()`.  
-   - `AgentRuntime` tokenizes this prompt via `LLMEngine.tokenize` to bootstrap streaming.
+   - `AgentRuntime` tokenizes this prompt via `await LLMEngine.tokenize` to bootstrap streaming.
 
 3. **Stepping**  
-   - For each turn, `LLMEngine.generate` produces token IDs and decoded assistant text.  
-   - `AgentSession.step_from_text` forwards the text to the protocol parser, yielding an `Action` (plain response, tool calls, or refusals).  
-   - The session persists the assistant message in the `Conversation` and invokes `environment.step(action)` to execute tool calls and emit observation strings plus a `done` flag.  
+   - For each turn, `await LLMEngine.generate` produces token IDs and decoded assistant text.  
+   - `await AgentSession.step_from_text` forwards the text to the protocol parser, yielding an `Action` (plain response, tool calls, or refusals).  
+   - The session persists the assistant message in the `Conversation` and invokes `await environment.step(action)` to execute tool calls and emit observation strings plus a `done` flag.  
    - Tool outputs are rendered back into prompt chunks with `protocol.render_messages(..., add_generation_prompt=True)` so the next LLM call sees both the assistant reply and tool feedback.  
-   - When a `RewardPipeline` is attached and a label is provided, `AgentSession.step` scores the action via optional process and result strategies.
+   - When a `RewardPipeline` is attached and a label is provided, `await AgentSession.step` scores the action via optional process and result strategies.
 
 4. **Streaming + termination**  
-   - `AgentRuntime` yields each assistant/tool message to the caller (`run_steps`) or returns the final assistant text (`run_final`).  
+   - `AgentRuntime` yields each assistant/tool message via `async for` (`run_steps`) or returns the final assistant text (`run_final`).  
    - Iteration stops when the environment signals `done` or `max_steps` is hit, in which case a final assistant warning is produced.
 
 ## Extending the system
 
-- **Rewards**: implement `ResultRewardStrategy` or `ProcessRewardStrategy` under `agentkit/rewards/`, then compose them with `RewardPipeline` before passing it to `AgentSession`.
-- **Tools**: subclass `ToolBase` in `agentkit/tools/` and supply instances to your environment constructor or call `env.register_tool(...)`.
-- **Environments**: extend `Environment` and override `step` to enforce custom guardrails, tool schemas, or prompt policies. Register it in `agentkit/factory._ENVIRONMENT_REGISTRY` if you want `build_environment("name")` to discover it.
+- **Rewards**: implement `ResultRewardStrategy` or `ProcessRewardStrategy` under `agentkit/rewards/` (`async def score`), then compose them with `RewardPipeline` before passing it to `AgentSession`.
+- **Tools**: subclass `ToolBase` in `agentkit/tools/` (`async def call`) and supply instances to your environment constructor or call `env.register_tool(...)`.
+- **Environments**: extend `Environment` and override `async def step` to enforce custom guardrails, tool schemas, or prompt policies. Register it in `agentkit/factory._ENVIRONMENT_REGISTRY` if you want `build_environment("name")` to discover it.
 - **Protocols**: create a `ChatProtocol` subclass inside `agentkit/protocols/`, implement render/parse helpers, and register it so `build_protocol("name")` resolves it.
-- **Backends**: implement `LLMEngine` under `backends/` (or `backends/hub/`) to integrate a new inference provider, then pass it to `AgentRuntime`.
+- **Backends**: implement `LLMEngine` under `backends/` (or `backends/hub/`) with `async def tokenize` / `async def generate` to integrate a new inference provider, then pass it to `AgentRuntime`.

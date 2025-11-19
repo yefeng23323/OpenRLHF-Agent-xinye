@@ -46,14 +46,14 @@ class AgentInstance(AgentInstanceBase):
         )
 
     async def reset(self, states: dict, **_) -> Dict[str, Any]:
-        prompt = self.session.initialize(states.get("observation"))
+        prompt = await self.session.initialize(states.get("observation"))
         return {"observation": prompt}
 
     async def step(self, states: dict, **_) -> Dict[str, Any]:
         action_text: str = states.get("action_text", "")
         label = states.get("label")
 
-        observation, reward = self.session.step_from_text(action_text, label=label)
+        observation, reward = await self.session.step_from_text(action_text, label=label)
 
         reward = float(reward) if reward is not None else 0.0
         if reward < -1:

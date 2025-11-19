@@ -12,7 +12,7 @@ class ProcessRewardStrategy(ABC):
     """Scores intermediate planning/tool steps."""
 
     @abstractmethod
-    def score(
+    async def score(
         self,
         *,
         action: Action,

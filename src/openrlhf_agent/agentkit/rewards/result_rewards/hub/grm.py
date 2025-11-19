@@ -10,7 +10,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 from jinja2 import Environment
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from openrlhf_agent.agentkit.rewards.result_rewards.base import ResultRewardStrategy
 from openrlhf_agent.utils.types import Action, RewardSample
@@ -183,16 +183,16 @@ class GRMJudgeReward(ResultRewardStrategy):
             "api_key": self._api_key
         }
 
-        self._client = OpenAI(**client_kwargs)
+        self._client = AsyncOpenAI(**client_kwargs)
 
     def _prepare_prompt(self, *, question: str, label: str, response: str) -> str:
         return self.prompt_template.format(question=question, label=label, response=response)
 
-    def _score_with_judge(self, prompt: str) -> Optional[str]:
+    async def _score_with_judge(self, prompt: str) -> Optional[str]:
         """Send the prompt to the external judge model."""
 
         try:
-            reply = self._client.chat.completions.create(
+            reply = await self._client.chat.completions.create(
                 model=self._model,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -206,7 +206,7 @@ class GRMJudgeReward(ResultRewardStrategy):
         content = reply.choices[0].message.content or ""
         return content.strip() or None
 
-    def score(
+    async def score(
         self,
         *,
         action: Action,
@@ -221,7 +221,7 @@ class GRMJudgeReward(ResultRewardStrategy):
 
         question_text = render_question_from_sample(sample)
         prompt = self._prepare_prompt(question=question_text, label=label, response=response)
-        verdict_text = self._score_with_judge(prompt)
+        verdict_text = await self._score_with_judge(prompt)
         if not verdict_text:
             return self.error_score
 

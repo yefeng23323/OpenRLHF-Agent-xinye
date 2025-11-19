@@ -26,7 +26,7 @@ class RewardPipeline:
             self._process_reward is not None or self._result_reward is not None
         ), "RewardPipeline requires at least one reward strategy"
 
-    def score(
+    async def score(
         self,
         *,
         action: Action,
@@ -39,9 +39,9 @@ class RewardPipeline:
         reward = 0.0
 
         if self._process_reward:
-            reward += self._process_reward.score(action=action, label=label)
+            reward += await self._process_reward.score(action=action, label=label)
 
         if self._result_reward and done:
-            reward += self._result_reward.score(action=action, label=label, sample=sample)
+            reward += await self._result_reward.score(action=action, label=label, sample=sample)
 
         return reward

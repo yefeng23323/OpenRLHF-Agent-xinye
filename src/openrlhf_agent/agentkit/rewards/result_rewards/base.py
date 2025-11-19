@@ -14,7 +14,7 @@ class ResultRewardStrategy(ABC):
     final_tool_name: str = "final"
 
     @abstractmethod
-    def score(
+    async def score(
         self,
         *,
         action: Action,

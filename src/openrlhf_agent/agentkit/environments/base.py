@@ -39,7 +39,7 @@ class Environment(ABC):
     def tools_manifest(self) -> List[Dict[str, Any]]:
         return [tool.openai_tool() for tool in self._tool_map.values()]
 
-    def execute_tool(self, call: ToolCall, context: Dict[str, Any]) -> str:
+    async def execute_tool(self, call: ToolCall, context: Dict[str, Any]) -> str:
         """Execute one tool invocation."""
 
         if call.name not in self._tool_map:
@@ -48,7 +48,7 @@ class Environment(ABC):
         arguments = call.arguments
         if not isinstance(arguments, dict):
             raise TypeError("Tool arguments must be a JSON object.")
-        return tool.call(context=context, arguments=arguments)
+        return await tool.call(context=context, arguments=arguments)
 
     def tool_names(self) -> List[str]:
         return list(self._tool_map.keys())
@@ -77,5 +77,5 @@ class Environment(ABC):
         return self._max_steps
 
     @abstractmethod
-    def step(self, action: Action) -> Tuple[List[str], bool]:
+    async def step(self, action: Action) -> Tuple[List[str], bool]:
         """Run one environment transition and return (observations, done)."""

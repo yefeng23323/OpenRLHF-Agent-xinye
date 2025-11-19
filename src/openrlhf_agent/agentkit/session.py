@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
 
 from openrlhf_agent.utils.types import (
     Message, Conversation,
@@ -32,17 +32,18 @@ class AgentSession:
         self.environment = environment
         self.protocol = protocol
         self.reward_pipeline = reward_pipeline
-        
+
         self.history = Conversation()
-        self._initial_question: Optional[Any] = None
+        self._initial_question: List[Message] = []
 
     def _parse_messages(
         self,
         payload: Optional[Union[Sequence[Dict[str, Any]], str]],
-    ) -> None:
+    ) -> List[Message]:
         """Reset the chat history and optionally seed prior turns."""
 
-        assert payload is not None
+        if payload is None:
+            return []
 
         if isinstance(payload, str):
             parsed_messages = self.protocol.parse_messages_from_completion_text(payload)
@@ -57,7 +58,7 @@ class AgentSession:
         
         raise NotImplementedError
 
-    def initialize(
+    async def initialize(
         self, payload: Optional[Union[Sequence[Dict[str, Any]], str]] = None
     ) -> str:
         """Reset environment state and return the first prompt."""
@@ -75,7 +76,7 @@ class AgentSession:
             add_generation_prompt=True,
         )
 
-    def step(
+    async def step(
         self,
         action: Action,
         *,
@@ -99,7 +100,7 @@ class AgentSession:
         self.history.append(action_message)
 
         # Observation messages
-        obs, done = self.environment.step(action)
+        obs, done = await self.environment.step(action)
 
         obs_messages = [Message(role="tool", content=obs) for obs in obs]
         if obs_messages:
@@ -122,7 +123,7 @@ class AgentSession:
         # Reward action
         reward = None
         if label is not None and self.reward_pipeline:
-            reward = self.reward_pipeline.score(
+            reward = await self.reward_pipeline.score(
                 action=action,
                 label=label,
                 done=done,
@@ -134,7 +135,7 @@ class AgentSession:
 
         return observation, reward
 
-    def step_from_text(
+    async def step_from_text(
         self,
         action_text: str,
         *,
@@ -143,7 +144,7 @@ class AgentSession:
         """Parse a raw model response and forward to `step`."""
 
         parsed_action = self.protocol.parse_assistant_text(action_text)
-        return self.step(
+        return await self.step(
             parsed_action,
             label=label,
             raw_text=action_text,

@@ -26,7 +26,7 @@ class CommentaryTool(ToolBase):
         "required": ["status"],
     }
 
-    def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
+    async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         status = self._coerce_text(arguments.get("status"))
         if not status:
             raise ValueError("`status` must be a non-empty string.")

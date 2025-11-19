@@ -105,12 +105,12 @@ export GRM_MODEL="grm-judge"
 ### Add a tool
 
 1. Subclass `ToolBase` from `src/openrlhf_agent/agentkit/tools/base.py`.
-2. Implement `call(self, context, **kwargs)` to return visible output or structured JSON.
+2. Implement `async def call(self, context, **kwargs)` to return visible output or structured JSON.
 3. Pass the tool into your environment (`FunctionCallEnvironment(tools=[...])`) or register it dynamically via `env.register_tool(...)`.
 
 ### Tailor the environment
 
-- Subclass `Environment` from `src/openrlhf_agent/agentkit/environments/base.py` to decide how tool calls are validated, executed, and terminated.
+- Subclass `Environment` from `src/openrlhf_agent/agentkit/environments/base.py` to decide how tool calls are validated, executed, and terminated (`async def step`).
 - Customize prompts, `max_steps`, and default tools when instantiating `FunctionCallEnvironment` (see `hub/function_call.py` for reference).
 - Return structured observation strings to emit internal guardrail hints or UI-visible tool outputs.
 
@@ -128,7 +128,7 @@ export GRM_MODEL="grm-judge"
 ### Support another engine
 
 - Subclass `LLMEngine` in `src/openrlhf_agent/backends/base.py`.
-- Implement `generate` and `tokenize` for your provider.
+- Implement `async def generate` and `async def tokenize` for your provider.
 - Instantiate the engine and supply it to `AgentRuntime`.
 
 ## 🌅 Project vision

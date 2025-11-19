@@ -26,7 +26,7 @@ class ToolBase(ABC):
         }
 
     @abstractmethod
-    def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
+    async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         """Execute the tool and return a string payload."""
 
         raise NotImplementedError

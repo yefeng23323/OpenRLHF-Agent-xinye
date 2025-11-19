@@ -74,11 +74,10 @@ class FunctionCallEnvironment(Environment):
 
     # ------------------------------------------------------------------- steps
 
-    def step(self, action: Action) -> Tuple[List[str], bool]:
+    async def step(self, action: Action) -> Tuple[List[str], bool]:
         observations: List[str] = []
         terminated = False
         final_plain_text = False
-        used_tools = False
 
         if action.refusal:
             observations.append(
@@ -100,8 +99,7 @@ class FunctionCallEnvironment(Environment):
                 final_plain_text = self._final_response_or_hint(action, observations)
                 terminated = final_plain_text
             else:
-                observations.extend(self._run_tool_calls(tool_calls))
-                used_tools = True
+                observations.extend(await self._run_tool_calls(tool_calls))
 
         observations, terminated = self._finalize_step(
             observations=observations,
@@ -141,18 +139,18 @@ class FunctionCallEnvironment(Environment):
         )
         return False
 
-    def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
+    async def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
         outputs: List[str] = []
         allowed = set(self.tool_names())
         for index, tool_call in enumerate(tool_calls):
             if tool_call is None:
                 continue
-            message = self._handle_tool_call(tool_call, index=index, allowed_tools=allowed)
+            message = await self._handle_tool_call(tool_call, index=index, allowed_tools=allowed)
             if message is not None:
                 outputs.append(message)
         return outputs
 
-    def _handle_tool_call(
+    async def _handle_tool_call(
         self,
         tool_call: ToolCall,
         *,
@@ -199,7 +197,7 @@ class FunctionCallEnvironment(Environment):
             )
 
         try:
-            outcome = self.execute_tool(call=tool_call, context={})
+            outcome = await self.execute_tool(call=tool_call, context={})
         except Exception as exc:  # pragma: no cover - defensive guard
             return self._internal_message(
                 code="tool_runtime_error",

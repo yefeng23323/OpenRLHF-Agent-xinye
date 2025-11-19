@@ -24,7 +24,7 @@ class FinalTool(ToolBase):
         "required": ["answer"],
     }
 
-    def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
+    async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         answer = str(arguments.get("answer", "")).strip()
         if not answer:
             return json.dumps(
