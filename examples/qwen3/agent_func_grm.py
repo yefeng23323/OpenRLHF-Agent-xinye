@@ -1,7 +1,6 @@
 """OpenRLHF integration example that scores rollouts with the GRM judge."""
 
 import logging
-import os
 from typing import Any, Dict
 
 import torch
