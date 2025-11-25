@@ -1,4 +1,4 @@
-"""Default environment that supports function calls plus a hidden status tool."""
+"""Environment that supports function calls plus a hidden status tool."""
 
 from __future__ import annotations
 
@@ -54,14 +54,8 @@ class FunctionCallEnvironment(Environment):
         extras: Optional[Dict[str, Any]] = None,
     ) -> str:
         payload: Dict[str, Any] = {
-            "__internal": True,
-            "visible_to_user": False,
             "ok": False,
             "error": {"code": code, "message": message},
-            "policy": {
-                "planning_requires_tools": True,
-                "final_response_must_be_plain_text": True,
-            },
             "allowed_tools": self.tool_names(),
         }
         if hint:
@@ -130,6 +124,7 @@ class FunctionCallEnvironment(Environment):
         response = (action.content or "").strip()
         if response:
             return True
+
         observations.append(
             self._internal_message(
                 code="empty_final",
