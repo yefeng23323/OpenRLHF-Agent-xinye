@@ -100,9 +100,9 @@ class AgentSession:
         self.history.append(action_message)
 
         # Observation messages
-        obs, done = await self.environment.step(action)
+        obs_list, done = await self.environment.step(action)
 
-        obs_messages = [Message(role="tool", content=obs) for obs in obs]
+        obs_messages = [Message(role="tool", content=obs) for obs in obs_list]
         if obs_messages:
             tool_payload = [m.model_dump(exclude_none=True) for m in obs_messages]
             feedback_text = self.protocol.render_messages(

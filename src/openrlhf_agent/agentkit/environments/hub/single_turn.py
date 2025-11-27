@@ -8,9 +8,9 @@ from openrlhf_agent.utils.types import Action
 from openrlhf_agent.agentkit.environments.base import Environment
 
 
-DEFAULT_SINGLE_TURN_PROMPT = (
-    "You are a helpful assistant.\n"
-)
+DEFAULT_SINGLE_TURN_PROMPT = """
+You are a helpful assistant.
+""".strip()
 
 
 class SingleTurnEnvironment(Environment):

@@ -11,16 +11,17 @@ from openrlhf_agent.agentkit.environments.base import Environment
 from openrlhf_agent.agentkit.tools import CommentaryTool, ToolBase
 
 
-SYSTEM_PROMPT_TEMPLATE = (
-    "You are a helpful agent assistant.\n\n"
-    "Keep the user informed as you work: give friendly, action-focused updates about what you're doing right now.\n\n"
-    "Knowledge cutoff: 2023-06\n"
-    "Current date: {date}\n\n"
-    # "Rules:\n"
-    # "- Use commentary(status=...) to share upbeat progress updates whenever your approach changes.\n"
-    # "- To answer the user, provide plain text outside tool calls. That text ends the session.\n"
-    # "- Tool calls must be JSON objects within <tool_call></tool_call> tags."
-)
+SYSTEM_PROMPT_TEMPLATE = """
+You are a helpful assistant.
+Keep the user informed as you work: give friendly, action-focused updates about what you're doing right now.
+
+Knowledge cutoff: 2023-06
+Current date: {date}
+""".strip()
+# "Rules:\n"
+# "- Use commentary(status=...) to share upbeat progress updates whenever your approach changes.\n"
+# "- To answer the user, provide plain text outside tool calls. That text ends the session.\n"
+# "- Tool calls must be JSON objects within <tool_call></tool_call> tags."
 
 
 class FunctionCallEnvironment(Environment):
@@ -36,8 +37,9 @@ class FunctionCallEnvironment(Environment):
         resolved_prompt = system_prompt or SYSTEM_PROMPT_TEMPLATE.format(
             date=datetime.now().strftime("%Y-%m-%d")
         )
+        tools = tools or [CommentaryTool()]
         super().__init__(
-            tools=list(tools or [CommentaryTool()]),
+            tools=list(tools),
             system_prompt=resolved_prompt,
             max_steps=max_steps,
         )
@@ -74,6 +76,7 @@ class FunctionCallEnvironment(Environment):
         final_plain_text = False
 
         if action.refusal:
+            # error action
             observations.append(
                 self._internal_message(
                     code="parse_error",
@@ -81,58 +84,26 @@ class FunctionCallEnvironment(Environment):
                     hint="Wrap tool calls in <tool_call> tags or reply with plain text only.",
                 )
             )
-            observations, terminated = self._finalize_step(
-                observations=observations,
-                terminated=terminated,
-            )
-            return observations, terminated
 
         else:
             tool_calls = action.tool_calls or []
-            if not tool_calls:
-                final_plain_text = self._final_response_or_hint(action, observations)
-                terminated = final_plain_text
-            else:
+            # run tool action
+            if tool_calls:
                 observations.extend(await self._run_tool_calls(tool_calls))
+            
+            # final action
+            else:
+                terminated = True
+                
 
-        observations, terminated = self._finalize_step(
-            observations=observations,
-            terminated=terminated,
-        )
-        return observations, terminated
-
-    # ----------------------------------------------------------------- internals
-
-    def _finalize_step(
-        self,
-        *,
-        observations: List[str],
-        terminated: bool,
-    ) -> Tuple[List[str], bool]:
+        # finalize step
         self._step_index += 1
-
         if self._step_index >= self.max_steps:
             terminated = True
 
         return observations, terminated
 
-    def _final_response_or_hint(
-        self,
-        action: Action,
-        observations: List[str],
-    ) -> bool:
-        response = (action.content or "").strip()
-        if response:
-            return True
-
-        observations.append(
-            self._internal_message(
-                code="empty_final",
-                message="Final response cannot be empty when no tool calls are provided.",
-                hint="Share a quick commentary(status=...) call or reply with plain text to finish.",
-            )
-        )
-        return False
+    # ----------------------------------------------------------------- internals
 
     async def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
         outputs: List[str] = []

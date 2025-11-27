@@ -58,7 +58,7 @@ def build_result_reward(
 
 
 def build_environment(name: Optional[str] = None, **kwargs: Any) -> Environment:
-    """Create an environment by name; returns the default when unspecified."""
+    """Create an environment by name."""
 
     resolved = (name or _DEFAULT_ENVIRONMENT).lower()
     try:
