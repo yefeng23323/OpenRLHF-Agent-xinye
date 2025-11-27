@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
@@ -18,10 +19,10 @@ Keep the user informed as you work: give friendly, action-focused updates about 
 Knowledge cutoff: 2023-06
 Current date: {date}
 """.strip()
-# "Rules:\n"
-# "- Use commentary(status=...) to share upbeat progress updates whenever your approach changes.\n"
-# "- To answer the user, provide plain text outside tool calls. That text ends the session.\n"
-# "- Tool calls must be JSON objects within <tool_call></tool_call> tags."
+# Suggested rules for the agent:
+# - Use commentary(status=...) to share quick progress updates when your plan changes.
+# - Answer the user with plain text outside tool calls; that finishes the chat.
+# - Tool calls must be JSON objects wrapped in whatever tool-call tags your model expects.
 
 
 class FunctionCallEnvironment(Environment):
@@ -44,77 +45,45 @@ class FunctionCallEnvironment(Environment):
             max_steps=max_steps,
         )
 
-    # ----------------------------------------------------------------- helpers
-
-    def _internal_message(
-        self,
-        *,
-        code: str,
-        message: str,
-        hint: Optional[str] = None,
-        tool: Optional[str] = None,
-        extras: Optional[Dict[str, Any]] = None,
-    ) -> str:
-        payload: Dict[str, Any] = {
-            "ok": False,
-            "error": {"code": code, "message": message},
-            "allowed_tools": self.tool_names(),
-        }
-        if hint:
-            payload["hint"] = hint
-        if tool:
-            payload["tool"] = tool
-        if extras:
-            payload.update(extras)
-        return json.dumps(payload, ensure_ascii=False)
-
-    # ------------------------------------------------------------------- steps
-
     async def step(self, action: Action) -> Tuple[List[str], bool]:
         observations: List[str] = []
         terminated = False
-        final_plain_text = False
 
         if action.refusal:
-            # error action
+            # Handle a parsing or refusal error from the model.
             observations.append(
                 self._internal_message(
                     code="parse_error",
                     message=action.refusal,
-                    hint="Wrap tool calls in <tool_call> tags or reply with plain text only.",
+                    hint="Wrap tool calls in the tool call tags or reply with plain text only.",
                 )
             )
 
         else:
             tool_calls = action.tool_calls or []
-            # run tool action
-            if tool_calls:
-                observations.extend(await self._run_tool_calls(tool_calls))
             
-            # final action
-            else:
+            # If there are no tool calls, treat this as the final reply.
+            if not tool_calls:
                 terminated = True
-                
 
-        # finalize step
+            # Run tool calls if they exist.
+            else:
+                observations.extend(await self._run_tool_calls(tool_calls))
+
+        # Bump the step counter and enforce the max step limit.
         self._step_index += 1
         if self._step_index >= self.max_steps:
             terminated = True
 
         return observations, terminated
 
-    # ----------------------------------------------------------------- internals
-
     async def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
-        outputs: List[str] = []
         allowed = set(self.tool_names())
-        for index, tool_call in enumerate(tool_calls):
-            if tool_call is None:
-                continue
-            message = await self._handle_tool_call(tool_call, index=index, allowed_tools=allowed)
-            if message is not None:
-                outputs.append(message)
-        return outputs
+        tasks = [
+            self._handle_tool_call(tool_call, index=index, allowed_tools=allowed)
+            for index, tool_call in enumerate(tool_calls)
+        ]
+        return await asyncio.gather(*tasks)
 
     async def _handle_tool_call(
         self,
@@ -122,7 +91,7 @@ class FunctionCallEnvironment(Environment):
         *,
         index: int,
         allowed_tools: Set[str],
-    ) -> Optional[str]:
+    ) -> str:
         if tool_call.refusal:
             return self._internal_message(
                 code="tool_call_error",
@@ -178,3 +147,25 @@ class FunctionCallEnvironment(Environment):
             )
 
         return str(outcome)
+
+    def _internal_message(
+        self,
+        *,
+        code: str,
+        message: str,
+        hint: Optional[str] = None,
+        tool: Optional[str] = None,
+        extras: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        payload: Dict[str, Any] = {
+            "ok": False,
+            "error": {"code": code, "message": message},
+            "allowed_tools": self.tool_names(),
+        }
+        if hint:
+            payload["hint"] = hint
+        if tool:
+            payload["tool"] = tool
+        if extras:
+            payload.update(extras)
+        return json.dumps(payload, ensure_ascii=False)
