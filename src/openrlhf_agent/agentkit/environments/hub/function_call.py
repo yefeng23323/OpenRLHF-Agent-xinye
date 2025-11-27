@@ -96,7 +96,7 @@ class FunctionCallEnvironment(Environment):
             return self._internal_message(
                 code="tool_call_error",
                 message=tool_call.refusal,
-                hint="Fix the tool call JSON payload or share a commentary(status=...) call before retrying.",
+                hint="Fix the tool call JSON payload.",
                 extras={"tool_call_id": tool_call.call_id, "action_index": index},
             )
 
@@ -122,7 +122,6 @@ class FunctionCallEnvironment(Environment):
             return self._internal_message(
                 code="invalid_arguments",
                 message="Tool arguments must be a JSON object.",
-                tool=name,
                 hint="Use key/value pairs when building tool arguments.",
                 extras={
                     "tool_call_id": tool_call.call_id,
@@ -137,8 +136,7 @@ class FunctionCallEnvironment(Environment):
             return self._internal_message(
                 code="tool_runtime_error",
                 message=f"Tool '{name}' raised an exception.",
-                tool=name,
-                hint="Revise the arguments or share a commentary(status=...) plan check before retrying.",
+                hint="Revise the arguments.",
                 extras={
                     "tool_call_id": tool_call.call_id,
                     "action_index": index,
