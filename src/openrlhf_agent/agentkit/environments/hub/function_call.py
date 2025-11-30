@@ -80,8 +80,7 @@ class FunctionCallEnvironment(Environment):
     async def _run_tool_calls(self, tool_calls: Sequence[ToolCall]) -> List[str]:
         allowed = set(self.tool_names())
         tasks = [
-            self._handle_tool_call(tool_call, index=index, allowed_tools=allowed)
-            for index, tool_call in enumerate(tool_calls)
+            self._handle_tool_call(tool_call, allowed_tools=allowed) for tool_call in tool_calls
         ]
         return await asyncio.gather(*tasks)
 
@@ -89,7 +88,6 @@ class FunctionCallEnvironment(Environment):
         self,
         tool_call: ToolCall,
         *,
-        index: int,
         allowed_tools: Set[str],
     ) -> str:
         if tool_call.refusal:
@@ -97,7 +95,7 @@ class FunctionCallEnvironment(Environment):
                 code="tool_call_error",
                 message=tool_call.refusal,
                 hint="Fix the tool call JSON payload.",
-                extras={"tool_call_id": tool_call.call_id, "action_index": index},
+                extras={"tool_call_id": tool_call.call_id},
             )
 
         name = (tool_call.name or "").strip()
@@ -106,7 +104,7 @@ class FunctionCallEnvironment(Environment):
                 code="missing_tool_name",
                 message="Tool name is required.",
                 hint="Provide a function name inside the tool call payload.",
-                extras={"tool_call_id": tool_call.call_id, "action_index": index},
+                extras={"tool_call_id": tool_call.call_id},
             )
 
         if name not in allowed_tools:
@@ -114,7 +112,7 @@ class FunctionCallEnvironment(Environment):
                 code="invalid_tool",
                 message=f"Tool '{name}' is not available.",
                 hint="Choose one of the allowed tools.",
-                extras={"tool_call_id": tool_call.call_id, "action_index": index},
+                extras={"tool_call_id": tool_call.call_id},
             )
 
         arguments = tool_call.arguments or {}
@@ -123,11 +121,7 @@ class FunctionCallEnvironment(Environment):
                 code="invalid_arguments",
                 message="Tool arguments must be a JSON object.",
                 hint="Use key/value pairs when building tool arguments.",
-                extras={
-                    "tool_call_id": tool_call.call_id,
-                    "action_index": index,
-                    "arguments": arguments,
-                },
+                extras={"tool_call_id": tool_call.call_id},
             )
 
         try:
@@ -139,7 +133,6 @@ class FunctionCallEnvironment(Environment):
                 hint="Revise the arguments.",
                 extras={
                     "tool_call_id": tool_call.call_id,
-                    "action_index": index,
                     "exception": str(exc),
                 },
             )
