@@ -26,6 +26,3 @@ class CommentaryTool(ToolBase):
 
     async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         return json.dumps({"ok": True}, ensure_ascii=False)
-
-
-__all__ = ["CommentaryTool"]

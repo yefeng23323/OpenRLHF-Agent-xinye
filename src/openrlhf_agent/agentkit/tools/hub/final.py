@@ -32,6 +32,3 @@ class FinalTool(ToolBase):
                 ensure_ascii=False,
             )
         return json.dumps({"ok": True, "answer": answer}, ensure_ascii=False)
-
-
-__all__ = ["FinalTool"]
