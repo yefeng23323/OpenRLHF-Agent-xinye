@@ -14,6 +14,10 @@ from openrlhf_agent.agentkit.protocols import (
     Qwen3InstructProtocol,
     Qwen3ThinkingProtocol,
 )
+from openrlhf_agent.agentkit.rewards.process_rewards import (
+    ProcessRewardStrategy,
+    ToolCallReward,
+)
 from openrlhf_agent.agentkit.rewards.result_rewards import (
     ResultRewardStrategy,
     MatchingReward,
@@ -33,11 +37,33 @@ _PROTOCOL_REGISTRY: Dict[str, Type[ChatProtocol]] = {
     "qwen3_thinking": Qwen3ThinkingProtocol,
 }
 
+_DEFAULT_PROCESS_REWARD = "tool_call"
+_PROCESS_REWARD_REGISTRY: Dict[str, Type[ProcessRewardStrategy]] = {
+    "tool_call": ToolCallReward,
+}
+
 _DEFAULT_RESULT_REWARD = "matching"
 _RESULT_REWARD_REGISTRY: Dict[str, Type[ResultRewardStrategy]] = {
     "matching": MatchingReward,
     "grm": GRMJudgeReward,
 }
+
+
+def build_process_reward(
+    name: Optional[str] = None,
+    *,
+    config: Optional[dict] = None,
+) -> ProcessRewardStrategy:
+    """Instantiate a process reward strategy via the registry."""
+
+    resolved = (name or _DEFAULT_PROCESS_REWARD).lower()
+    try:
+        reward_cls = _PROCESS_REWARD_REGISTRY[resolved]
+    except KeyError as exc:
+        raise ValueError(f"Unknown reward strategy '{name}'.") from exc
+
+    payload = dict(config or {})
+    return reward_cls(**payload)
 
 
 def build_result_reward(

@@ -5,7 +5,12 @@ from typing import Any, Dict
 
 from openrlhf_agent.agentkit.rewards import RewardPipeline
 from openrlhf_agent.agentkit.session import AgentSession
-from openrlhf_agent.agentkit.factory import build_environment, build_protocol, build_result_reward
+from openrlhf_agent.agentkit.factory import (
+    build_environment,
+    build_protocol,
+    build_process_reward,
+    build_result_reward,
+)
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
 
@@ -19,9 +24,21 @@ class AgentInstance(AgentInstanceBase):
         environment = build_environment(name="function_call")
         protocol = build_protocol(name="qwen3_thinking")
         pipeline = RewardPipeline(
+            process_reward=build_process_reward(
+                name="tool_call",
+                config=dict(
+                    reward_per_call=0.1,
+                    no_tool_score=0.0,
+                    parse_error_score=-0.1,
+                    max_reward=0.2, # max step reward
+                )
+            ),
             result_reward=build_result_reward(
                 name="matching",
-                config=dict(correct_score=1.0, miss_score=0.0)
+                config=dict(
+                    correct_score=1.0,
+                    miss_score=0.0,
+                )
             )
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)
