@@ -1,44 +1,95 @@
-"""Reward strategy that encourages valid tool usage."""
+"""Lightweight tool process reward: per-tool scoring rules."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, List, Optional
+from collections import Counter
+from dataclasses import dataclass, field
+from typing import Any, Mapping, Optional
 
 from openrlhf_agent.agentkit.rewards.process_rewards.base import ProcessRewardStrategy
-from openrlhf_agent.utils.types import Action, ToolCall
+from openrlhf_agent.utils.types import Action
+
+
+@dataclass
+class ToolPolicy:
+    """Per-tool scoring config."""
+
+    reward_per_call: float
+    max_calls: Optional[int]
+    overuse_penalty: float
+
+    @staticmethod
+    def new(policy):
+        if isinstance(policy, ToolPolicy):
+            return policy
+
+        if isinstance(policy, Mapping):
+            return ToolPolicy(
+                reward_per_call=policy.get("reward_per_call", 0.1),
+                max_calls=policy.get("max_calls", None),
+                overuse_penalty=policy.get("overuse_penalty", -0.05),
+            )
+
+        raise TypeError("tool_policies values must be ToolPolicy or mapping")
 
 
 @dataclass
 class ToolCallReward(ProcessRewardStrategy):
-    """Assigns reward when the model issues tool calls."""
+    """Per-tool scoring with simple caps and penalties."""
 
-    reward_per_call: float = 0.1
-    no_tool_score: float = 0.0
-    parse_error_score: float = -0.1
+    min_reward: Optional[float] = None
     max_reward: Optional[float] = None
+    parse_error_penalty: float = -0.2
+    penalty_for_refused: float = -0.1
+    tool_policies: Mapping[str, ToolPolicy] = field(default_factory=dict)
 
-    def _has_parse_error(self, action: Action) -> bool:
-        if action.refusal:
-            return True
-        return any(call and call.refusal for call in action.tool_calls or [])
+    def __post_init__(self) -> None:
+        # Normalize user-supplied policies; allow dicts or ToolPolicy.
+        self.tool_policies = {
+            key.lower(): ToolPolicy.new(policy)
+            for key, policy in (self.tool_policies or {}).items()
+        }
 
-    def _filtered_calls(self, action: Action) -> List[ToolCall]:
-        calls: List[ToolCall] = []
-        for tool_call in action.tool_calls or []:
-            if tool_call is None or tool_call.refusal:
+    def _clamp(self, reward: float) -> float:
+        if self.max_reward is not None:
+            reward = min(reward, self.max_reward)
+        if self.min_reward is not None:
+            reward = max(reward, self.min_reward)
+        return reward
+
+    def _collect_call_stats(self, action: Action) -> tuple[Counter[str], int]:
+        counts: Counter[str] = Counter()
+        refused = 0
+
+        for call in action.tool_calls or []:
+            if call is None or call.refusal:
+                refused += 1
                 continue
 
-            name = (tool_call.name or "").strip()
+            name = (call.name or "").strip()
             if not name:
+                refused += 1
                 continue
 
-            # if not self.include_final_tool and name == self.final_tool_name:
-            #     continue
+            counts[name.lower()] += 1
 
-            calls.append(tool_call)
+        return counts, refused
 
-        return calls
+    def _score_counts(self, counts: Counter[str], refused: int) -> float:
+        reward = refused * self.penalty_for_refused
+
+        for name, count in counts.items():
+            policy = self.tool_policies.get(name, None)
+            if not policy:  # ignore calls to tools without a policy
+                continue
+
+            allowed = max(0, policy.max_calls) if policy.max_calls is not None else count
+            if count <= allowed:
+                reward += min(count, allowed) * policy.reward_per_call
+            else:
+                reward += (count - allowed) * policy.overuse_penalty
+
+        return reward
 
     async def score(
         self,
@@ -46,17 +97,11 @@ class ToolCallReward(ProcessRewardStrategy):
         action: Action,
         label: Optional[Any],
     ) -> float:
-        """Reward tool calls while penalizing parse errors."""
+        """Score tool usage with per-tool rules; fast-path, no extra objects."""
 
-        if self._has_parse_error(action):
-            return self.parse_error_score
+        if action.refusal:
+            return self._clamp(self.parse_error_penalty)
 
-        valid_calls = self._filtered_calls(action)
-        if not valid_calls:
-            return self.no_tool_score
-
-        reward = len(valid_calls) * self.reward_per_call
-        if self.max_reward is not None:
-            reward = min(reward, self.max_reward)
-
-        return reward
+        counts, refused = self._collect_call_stats(action)
+        reward = self._score_counts(counts, refused)
+        return self._clamp(reward)

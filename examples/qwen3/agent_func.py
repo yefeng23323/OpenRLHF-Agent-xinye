@@ -27,10 +27,15 @@ class AgentInstance(AgentInstanceBase):
             process_reward=build_process_reward(
                 name="tool_call",
                 config=dict(
-                    reward_per_call=0.1,
-                    no_tool_score=0.0,
-                    parse_error_score=-0.1,
-                    max_reward=0.2, # max step reward
+                    parse_error_penalty=-0.2,
+                    penalty_for_refused=-0.1,
+                    tool_policies={
+                        "commentary": dict(
+                            max_calls=1,
+                            reward_per_call=0.1,
+                            overuse_penalty=-0.1,
+                        ),
+                    },
                 )
             ),
             result_reward=build_result_reward(
