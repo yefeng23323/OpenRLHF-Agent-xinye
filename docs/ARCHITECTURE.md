@@ -10,7 +10,7 @@ OpenRLHF-Agent uses the same primitives for RL rollouts and production inference
 - `agentkit/environments/`: base contract plus `hub/function_call.py` (tool calling, default `CommentaryTool`) and `hub/single_turn.py`.
 - `agentkit/tools/`: `ToolBase` and built-ins (`CommentaryTool`, `ThinkTool`, `FinalTool`).
 - `agentkit/protocols/`: prompt/render/parse codecs (`hub/qwen3_instruct.py`, `hub/qwen3_thinking.py`).
-- `agentkit/rewards/`: `RewardPipeline`, process reward (`process_rewards/hub/tool_call.py`), result rewards (`result_rewards/hub/matching.py`, `hub/grm.py`).
+- `agentkit/rewards/`: `RewardPipeline`, process reward (`process_rewards/hub/tool_call.py`), result rewards (`result_rewards/hub/matching.py` for string/math matching, `hub/grm.py`).
 - `agentkit/factory.py`: registry helpers for environments/protocols/rewards (defaults: `single_turn`, `function_call`, `qwen3_instruct`, `qwen3_thinking`).
 - `backends/`: `LLMEngine` interface and OpenAI/vLLM HTTP client (`hub/openai.py`).
 - `examples/qwen3/`, `examples/single_turn/`: runnable demos for streaming and RL hooks.

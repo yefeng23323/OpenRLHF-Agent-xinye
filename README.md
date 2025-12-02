@@ -89,7 +89,7 @@ Start from the built-in abstractionsâ€”tools, environments, protocols, rewardsâ€
 
 #### 4.2. Shape rewards
 
-- Compose a `RewardPipeline` with result/process strategies from `src/openrlhf_agent/agentkit/rewards/` (e.g., `MatchingReward`).
+- Compose a `RewardPipeline` with result/process strategies from `src/openrlhf_agent/agentkit/rewards/` (e.g., `MatchingReward`, `MathMatchingReward` for symbolic math equivalence).
 - Pass the pipeline into `AgentSession(..., reward_pipeline=...)` so each `step_from_text` call can emit scalar rewards during RL training.
 
 #### 4.3. Ship a new chat protocol

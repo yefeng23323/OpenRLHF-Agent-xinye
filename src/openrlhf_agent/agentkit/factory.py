@@ -21,6 +21,7 @@ from openrlhf_agent.agentkit.rewards.process_rewards import (
 from openrlhf_agent.agentkit.rewards.result_rewards import (
     ResultRewardStrategy,
     MatchingReward,
+    MathMatchingReward,
     GRMJudgeReward,
 )
 
@@ -45,6 +46,7 @@ _PROCESS_REWARD_REGISTRY: Dict[str, Type[ProcessRewardStrategy]] = {
 _DEFAULT_RESULT_REWARD = "matching"
 _RESULT_REWARD_REGISTRY: Dict[str, Type[ResultRewardStrategy]] = {
     "matching": MatchingReward,
+    "math_matching": MathMatchingReward,
     "grm": GRMJudgeReward,
 }
 

@@ -20,6 +20,8 @@ setup(
     install_requires=[
         "httpx>=0.27",
         "openai>=1.40",
+        "pylatexenc>=2.10",
+        "sympy>=1.12",
     ],
     extras_require={
         "dev": [

@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from openrlhf_agent.utils.types import Action, RewardSample
 from openrlhf_agent.agentkit.rewards.result_rewards.base import ResultRewardStrategy
+from openrlhf_agent.agentkit.rewards.result_rewards.hub.math_utils import grade_answer_verl
 
 
 @dataclass
@@ -22,9 +23,9 @@ class MatchingReward(ResultRewardStrategy):
         if label is None:
             return self.miss_score
 
-        target = str(label).strip()
+        label = str(label).strip()
         prediction = response.strip()
-        return self.correct_score if prediction == target else self.miss_score
+        return self.correct_score if prediction == label else self.miss_score
 
     async def score(
         self,
@@ -43,3 +44,24 @@ class MatchingReward(ResultRewardStrategy):
             return self.miss_score
 
         return self.score_response(response, label)
+
+
+@dataclass
+class MathMatchingReward(MatchingReward):
+    """Matching reward that additionally checks symbolic math equality for boxed LaTeX answers."""
+
+    def score_response(self, response: str, label: Optional[Any]) -> float:
+        if label is None:
+            return self.miss_score
+
+        label = str(label).strip()
+        prediction = response.strip()
+        if not label or not prediction:
+            return self.miss_score
+
+        try:
+            is_correct = grade_answer_verl(prediction, label)
+        except Exception:
+            return self.miss_score
+
+        return self.correct_score if is_correct else self.miss_score
