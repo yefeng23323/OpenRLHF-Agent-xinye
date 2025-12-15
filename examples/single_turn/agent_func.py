@@ -17,7 +17,7 @@ logger.setLevel(logging.INFO)
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
         environment = build_environment(name="single_turn")
-        protocol = build_protocol(name="qwen3_instruct")
+        protocol = build_protocol(name="qwen3_thinking")
         pipeline = RewardPipeline(
             result_reward=build_result_reward(
                 name="matching",
@@ -55,5 +55,5 @@ class AgentInstance(AgentInstanceBase):
 
 
 class AgentExecutor(AgentExecutorBase):
-    def __init__(self, max_steps, max_length, llm_engine, hf_tokenizer, result_queue):
-        super().__init__(AgentInstance, max_steps, max_length, llm_engine, hf_tokenizer, result_queue)
+    def __init__(self, max_length, llm_engine, hf_tokenizer):
+        super().__init__(AgentInstance, max_length, llm_engine, hf_tokenizer)

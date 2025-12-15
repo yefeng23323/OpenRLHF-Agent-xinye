@@ -75,5 +75,5 @@ class AgentInstance(AgentInstanceBase):
 class AgentExecutor(AgentExecutorBase):
     """Adapter consumed by OpenRLHF's rollout workers."""
 
-    def __init__(self, max_steps, max_length, llm_engine, hf_tokenizer, result_queue):
-        super().__init__(AgentInstance, max_steps, max_length, llm_engine, hf_tokenizer, result_queue)
+    def __init__(self, max_length, llm_engine, hf_tokenizer):
+        super().__init__(AgentInstance, max_length, llm_engine, hf_tokenizer)
