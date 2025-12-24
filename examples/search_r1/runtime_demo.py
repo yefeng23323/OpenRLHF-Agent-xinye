@@ -29,7 +29,7 @@ async def main() -> None:
         tools=[
             CommentaryTool(),
             LocalSearchTool(base_url="http://localhost:8000/retrieve"),
-        ], # Available Tools,
+        ],
         system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
     )
     protocol = Qwen3ThinkingProtocol()
