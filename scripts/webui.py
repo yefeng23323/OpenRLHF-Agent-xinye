@@ -25,7 +25,7 @@ Current date: {date}
 """.strip()
 
 
-def render_html(messages: List[Dict[str, Any]]) -> str:
+def render_xml(messages: List[Dict[str, Any]]) -> str:
     """Render one run_steps item into readable HTML with collapsible sections."""
 
     detail_sections: List[str] = []
@@ -79,7 +79,7 @@ def launch_runtime_ui(
 
     history_messages = []
 
-    async def handle_chat_message(show_messages: List[Dict[str, str]], prompt: str):
+    async def handle_chat(show_messages: List[Dict[str, str]], prompt: str):
         if not prompt.strip():
             return
 
@@ -92,14 +92,18 @@ def launch_runtime_ui(
         async for step in runtime.run_steps(history_messages):
             new_assistant_messages.append(step)
 
-            new_show_messages = [{"role": "assistant", "content": render_html(new_assistant_messages) + "\n\n..."}]
+            new_show_messages = [{"role": "assistant", "content": render_xml(new_assistant_messages) + "\n\n..."}]
             yield show_messages + new_show_messages, ""
         
-        new_show_messages = [{"role": "assistant", "content": render_html(new_assistant_messages)}]
+        new_show_messages = [{"role": "assistant", "content": render_xml(new_assistant_messages)}]
         yield show_messages + new_show_messages, ""
 
         assert new_assistant_messages[-1]["role"] == "assistant"
         history_messages.append(new_assistant_messages[-1])
+
+    def handle_reset():
+        history_messages.clear()
+        return [], default_prompt or ""
 
     with gr.Blocks(title="OpenRLHF-Agent") as ui:
         with gr.Column(elem_id="layout"):
@@ -107,7 +111,7 @@ def launch_runtime_ui(
             if page_description:
                 gr.Markdown(page_description, elem_id="page-subtitle")
 
-            gr.Markdown(f"Available Tools: {runtime.session.environment.tool_names()}", elem_id="helper-text")
+            gr.Markdown(f"Available Tools: {','.join(runtime.session.environment.tool_names())}", elem_id="helper-text")
 
             chat_panel = gr.Chatbot(
                 value=[],
@@ -132,9 +136,9 @@ def launch_runtime_ui(
                 send_button = gr.Button("Submit", variant="primary", elem_id="send-btn", scale=1)
                 reset_button = gr.Button("Reset", variant="secondary", elem_id="reset-btn", scale=1)
 
-        send_button.click(handle_chat_message, inputs=[chat_panel, message_box], outputs=[chat_panel, message_box])
-        message_box.submit(handle_chat_message, inputs=[chat_panel, message_box], outputs=[chat_panel, message_box])
-        reset_button.click(lambda: ([], default_prompt or ""), outputs=[chat_panel, message_box])
+        send_button.click(handle_chat, inputs=[chat_panel, message_box], outputs=[chat_panel, message_box])
+        message_box.submit(handle_chat, inputs=[chat_panel, message_box], outputs=[chat_panel, message_box])
+        reset_button.click(handle_reset, outputs=[chat_panel, message_box])
 
     return ui
 
