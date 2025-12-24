@@ -1,6 +1,5 @@
 """OpenRLHF integration example that scores rollouts with the GRM judge."""
 
-import logging
 from typing import Any, Dict
 
 import torch
@@ -12,11 +11,6 @@ from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.rewards.result_rewards import GRMJudgeReward
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
-
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class AgentInstance(AgentInstanceBase):

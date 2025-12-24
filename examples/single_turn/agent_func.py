@@ -1,4 +1,3 @@
-import logging
 import torch
 
 from typing import Any, Dict
@@ -10,10 +9,6 @@ from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.rewards.result_rewards import MatchingReward
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class AgentInstance(AgentInstanceBase):

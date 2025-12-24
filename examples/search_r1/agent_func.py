@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 import torch
 from typing import Any, Dict
@@ -12,18 +11,13 @@ from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 
 CUSTOM_SYSTEM_PROMPT = """
-Answer the given question. First, think step by step inside <think> and </think> whenever you receive new information. 
-After reasoning, decide whether to use tools. Use tools to verify specific aspects of your reasoning or to fetch missing knowledge; 
-do not rely on tools to write the final answer. Call the commentary tool only for brief progress updates.
+Solve the question step by step. When you receive new information, think through it in detail inside <think>...</think> before continuing.
+After reasoning, decide whether any tools are needed. Use tools only to verify specific parts of your reasoning or to fetch missing information—not to produce the final answer. For brief progress updates, use the commentary tool sparingly.
 
-If the conditions for solving the problem have been met, directly provide the final answer inside <final> and </final> without extra illustrations. 
-Example: <final> ... </final>.
+Work systematically and explain steps clearly. Format the final response as:
+Answer: \\boxed{{$Answer}}
 
 Knowledge cutoff: 2023-06
 Current date: {date}
@@ -33,7 +27,10 @@ Current date: {date}
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
         environment = FunctionCallEnvironment(
-            tools=[CommentaryTool(), LocalSearchTool()],
+            tools=[
+                CommentaryTool(),
+                LocalSearchTool(base_url="http://localhost:8000/retrieve"),
+            ],
             system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
         )
         protocol = Qwen3ThinkingProtocol()
