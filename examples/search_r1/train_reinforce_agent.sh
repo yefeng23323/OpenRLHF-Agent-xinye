@@ -12,10 +12,10 @@ export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export TORCH_NCCL_ENABLE_MONITORING=0
 export NCCL_SOCKET_TIMEOUT=1800000
 
-MODEL_PATH="/mnt/workspace/liaoxinye/pretrain_models/Qwen/Qwen3-4B-Thinking-2507"
+MODEL_PATH="Qwen/Qwen3-4B-Instruct-2507"
 SAVE_PATH="${WORK_DIR}/exp/Qwen3-test"
 AGNET_FUNC_PATH="${WORK_DIR}/examples/search_r1/agent_func.py"
-DATASET_PATH="/mnt/workspace/liaoxinye/Search-R1/data/nq_hotpotqa_train" # TODO: set your dataset path here
+DATASET_PATH="{your_dataset_path_here}" # TODO: set your dataset path here
 
 set -x
 
