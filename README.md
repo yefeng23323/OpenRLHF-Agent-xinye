@@ -69,7 +69,7 @@ The script wires together:
 
 - `OpenAIEngine` pointing at a vLLM/OpenAI-compatible endpoint.
 - `FunctionCallEnvironment` with the `commentary` tool, feedback hooks, and plain-text finals.
-- `build_protocol("qwen3_thinking")` for prompt rendering and `<tool_call>` parsing.
+- `Qwen3ThinkingProtocol()` for prompt rendering and `<tool_call>` parsing.
 
 You will see tool traces and the final answer printed to the console.
 
@@ -96,7 +96,7 @@ Start from the built-in abstractions—tools, environments, protocols, rewards�
 
 - Subclass `ChatProtocol` in `src/openrlhf_agent/agentkit/protocols/base.py`.
 - Implement render + parse helpers for your provider format.
-- Expose it via `build_protocol` and pass it into `AgentRuntime`.
+- Instantiate it and wire it into `AgentRuntime` (or `AgentSession`) directly.
 
 ## 📄 License
 

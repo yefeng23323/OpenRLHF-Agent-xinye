@@ -7,8 +7,9 @@ from typing import Any, Dict, List, Optional
 import gradio as gr
 
 from openrlhf_agent.backends import OpenAIEngine
-from openrlhf_agent.agentkit.factory import build_environment, build_protocol
 from openrlhf_agent.agentkit.runtime import AgentRuntime
+from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
+from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
 
@@ -151,15 +152,14 @@ if __name__ == "__main__":
             base_url="http://localhost:8009/v1",
             api_key="empty",
         ),
-        environment=build_environment(
-            name="function_call",
+        environment=FunctionCallEnvironment(
             tools=[
                 CommentaryTool(),
                 # LocalSearchTool(base_url="http://localhost:8000/retrieve"),
             ],  # Tools used by the runtime and UI.
             system_prompt=SYSTEM_PROMPT_TEMPLATE.format(date=datetime.now().strftime("%Y-%m-%d")),
         ),
-        protocol=build_protocol(name="qwen3_thinking"),
+        protocol=Qwen3ThinkingProtocol(),
     )
 
     # Build the UI and start the server.

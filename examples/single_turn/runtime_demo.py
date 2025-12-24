@@ -2,7 +2,8 @@ import asyncio
 
 from openrlhf_agent.backends import OpenAIEngine
 from openrlhf_agent.agentkit.runtime import AgentRuntime
-from openrlhf_agent.agentkit.factory import build_environment, build_protocol
+from openrlhf_agent.agentkit.environments import SingleTurnEnvironment
+from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 
 
 async def main() -> None:
@@ -11,8 +12,8 @@ async def main() -> None:
         base_url="http://localhost:8009/v1",
         api_key="empty",
     )
-    env = build_environment(name="single_turn")
-    protocol = build_protocol(name="qwen3_thinking")
+    env = SingleTurnEnvironment()
+    protocol = Qwen3ThinkingProtocol()
 
     rt = AgentRuntime(engine, env, protocol)
     messages = [{"role": "user", "content": "Tell me a joke about programming."}]

@@ -1,8 +1,9 @@
 import asyncio
 from datetime import datetime
 from openrlhf_agent.backends import OpenAIEngine
-from openrlhf_agent.agentkit.factory import build_environment, build_protocol
 from openrlhf_agent.agentkit.runtime import AgentRuntime
+from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
+from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
 
@@ -25,15 +26,14 @@ async def main() -> None:
         base_url="http://localhost:8009/v1",
         api_key="empty"
     )
-    env = build_environment(
-        name="function_call",
+    env = FunctionCallEnvironment(
         tools=[
             CommentaryTool(),
             LocalSearchTool(base_url="http://localhost:8000/retrieve"),
         ], # Available Tools,
         system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
     )
-    protocol = build_protocol(name="qwen3_thinking")
+    protocol = Qwen3ThinkingProtocol()
     rt = AgentRuntime(engine, env, protocol)
     messages = [{"role": "user", "content": "Please use the commentary function to share your thoughts, and also help me search what Python is?"}]
     async for step in rt.run_steps(messages):

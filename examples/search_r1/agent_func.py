@@ -5,11 +5,9 @@ from typing import Any, Dict
 
 from openrlhf_agent.agentkit.rewards import RewardPipeline
 from openrlhf_agent.agentkit.session import AgentSession
-from openrlhf_agent.agentkit.factory import (
-    build_environment,
-    build_protocol,
-    build_result_reward,
-)
+from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
+from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
+from openrlhf_agent.agentkit.rewards.result_rewards import MatchingReward
 from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
@@ -34,19 +32,15 @@ Current date: {date}
 
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
-        environment = build_environment(
-            name="function_call",
+        environment = FunctionCallEnvironment(
             tools=[CommentaryTool(), LocalSearchTool()],
             system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
         )
-        protocol = build_protocol(name="qwen3_thinking")
+        protocol = Qwen3ThinkingProtocol()
         pipeline = RewardPipeline(
-            result_reward=build_result_reward(
-                name="matching",
-                config=dict(
-                    correct_score=1.0,
-                    miss_score=0.0,
-                )
+            result_reward=MatchingReward(
+                correct_score=1.0,
+                miss_score=0.0,
             ),
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)

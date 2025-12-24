@@ -1,5 +1,5 @@
 from pathlib import Path
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 
 BASE_DIR = Path(__file__).parent
@@ -16,7 +16,7 @@ setup(
     license="Apache-2.0",
     python_requires=">=3.10",
     package_dir={"": "src"},
-    packages=find_packages(where="src"),
+    packages=find_namespace_packages(where="src"),
     install_requires=[
         "httpx>=0.27",
         "openai>=1.40",

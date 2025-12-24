@@ -5,12 +5,9 @@ from typing import Any, Dict
 
 from openrlhf_agent.agentkit.rewards import RewardPipeline
 from openrlhf_agent.agentkit.session import AgentSession
-from openrlhf_agent.agentkit.factory import (
-    build_environment,
-    build_protocol,
-    build_process_reward,
-    build_result_reward,
-)
+from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
+from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
+from openrlhf_agent.agentkit.rewards.result_rewards import MathMatchingReward
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
 
@@ -21,15 +18,12 @@ logger.setLevel(logging.INFO)
 
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
-        environment = build_environment(name="function_call")
-        protocol = build_protocol(name="qwen3_thinking")
+        environment = FunctionCallEnvironment()
+        protocol = Qwen3ThinkingProtocol()
         pipeline = RewardPipeline(
-            result_reward=build_result_reward(
-                name="math_matching",
-                config=dict(
-                    correct_score=1.0,
-                    miss_score=0.0,
-                )
+            result_reward=MathMatchingReward(
+                correct_score=1.0,
+                miss_score=0.0,
             )
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)

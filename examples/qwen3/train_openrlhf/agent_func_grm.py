@@ -5,13 +5,11 @@ from typing import Any, Dict
 
 import torch
 
-from openrlhf_agent.agentkit.factory import (
-    build_environment,
-    build_protocol,
-    build_result_reward,
-)
 from openrlhf_agent.agentkit.rewards import RewardPipeline
 from openrlhf_agent.agentkit.session import AgentSession
+from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
+from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
+from openrlhf_agent.agentkit.rewards.result_rewards import GRMJudgeReward
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
 
@@ -25,18 +23,15 @@ class AgentInstance(AgentInstanceBase):
     """Exact same agent wiring as examples/qwen3/agent_func.py, but GRM-scored."""
 
     def __init__(self, *_, **__):
-        environment = build_environment(name="function_call")
-        protocol = build_protocol(name="qwen3_thinking")
-        pipeline = RewardPipeline(result_reward=build_result_reward(
-            name="grm",
-            config={
-                "model": "qwen3",
-                "base_url": "http://0.0.0.0:8009/v1",
-                "api_key": "empty",
-                "correct_score": 1.0,
-                "format_score": 0.0,
-                "error_score": -0.1,
-            },
+        environment = FunctionCallEnvironment()
+        protocol = Qwen3ThinkingProtocol()
+        pipeline = RewardPipeline(result_reward=GRMJudgeReward(
+            model="qwen3",
+            base_url="http://0.0.0.0:8009/v1",
+            api_key="empty",
+            correct_score=1.0,
+            format_score=0.0,
+            error_score=-0.1,
         ))
         self.session = AgentSession(
             environment=environment,
