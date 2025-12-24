@@ -1,5 +1,6 @@
+import logging
+from datetime import datetime
 import torch
-
 from typing import Any, Dict
 
 from openrlhf_agent.agentkit.rewards import RewardPipeline
@@ -7,39 +8,46 @@ from openrlhf_agent.agentkit.session import AgentSession
 from openrlhf_agent.agentkit.factory import (
     build_environment,
     build_protocol,
-    build_process_reward,
     build_result_reward,
 )
+from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+CUSTOM_SYSTEM_PROMPT = """
+Answer the given question. First, think step by step inside <think> and </think> whenever you receive new information. 
+After reasoning, decide whether to use tools. Use tools to verify specific aspects of your reasoning or to fetch missing knowledge; 
+do not rely on tools to write the final answer. Call the commentary tool only for brief progress updates.
+
+If the conditions for solving the problem have been met, directly provide the final answer inside <final> and </final> without extra illustrations. 
+Example: <final> ... </final>.
+
+Knowledge cutoff: 2023-06
+Current date: {date}
+""".strip()
 
 
 class AgentInstance(AgentInstanceBase):
     def __init__(self, *args, **kwargs):
-        environment = build_environment(name="function_call")
+        environment = build_environment(
+            name="function_call",
+            tools=[CommentaryTool(), LocalSearchTool()],
+            system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
+        )
         protocol = build_protocol(name="qwen3_thinking")
         pipeline = RewardPipeline(
-            process_reward=build_process_reward(
-                name="tool_call",
-                config=dict(
-                    parse_error_penalty=-0.2,
-                    penalty_for_refused=-0.1,
-                    tool_policies={
-                        "commentary": dict(
-                            max_calls=1,
-                            reward_per_call=0.1,
-                            overuse_penalty=-0.1,
-                        ),
-                    },
-                )
-            ),
             result_reward=build_result_reward(
                 name="matching",
                 config=dict(
                     correct_score=1.0,
                     miss_score=0.0,
                 )
-            )
+            ),
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)
 
@@ -52,7 +60,7 @@ class AgentInstance(AgentInstanceBase):
         label = states.get("label")
 
         observation, reward = await self.session.step_from_text(action_text, label=label)
-        
+
         reward = float(reward) if reward is not None else 0.0
         if reward < -1:
             reward = -1.0
