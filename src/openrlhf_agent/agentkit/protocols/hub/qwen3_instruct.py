@@ -149,6 +149,8 @@ class Qwen3InstructProtocol(ChatProtocol):
 
         try:
             payload = json.loads(raw_payload)
+            assert "name" in payload.keys()
+            assert "arguments" in payload.keys()
         except Exception as exc:  # simple catch keeps message short
             return ToolCall(call_id=f"call_{idx}", refusal=f"error parse json: {exc}")
 
