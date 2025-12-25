@@ -20,24 +20,24 @@ Current date: {date}
 
 
 async def main() -> None:
-    engine = OpenAIEngine(
-        model="qwen3", 
-        base_url="http://localhost:8009/v1",
-        api_key="empty"
+    agent_runtime = AgentRuntime(
+        protocol=Qwen3ThinkingProtocol(), # qwen3-thinking
+        engine=OpenAIEngine(
+            model="qwen3", 
+            base_url="http://localhost:8009/v1",
+            api_key="empty"
+        ),
+        environment=FunctionCallEnvironment(
+            system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
+            tools=[
+                CommentaryTool(),
+                LocalSearchTool(base_url="http://localhost:8000/retrieve"),
+            ],
+        ),
     )
-    env = FunctionCallEnvironment(
-        tools=[
-            CommentaryTool(),
-            LocalSearchTool(base_url="http://localhost:8000/retrieve"),
-        ],
-        system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
-    )
-    protocol = Qwen3ThinkingProtocol()
-    rt = AgentRuntime(engine, env, protocol)
     messages = [{"role": "user", "content": "Please use the commentary function to share your thoughts, and also help me search what Python is?"}]
-    async for step in rt.run_steps(messages):
-        print(step)
-        print("-" * 100)    
+    async for message in agent_runtime.run_steps(messages):
+        print(message)
 
 
 if __name__ == "__main__":

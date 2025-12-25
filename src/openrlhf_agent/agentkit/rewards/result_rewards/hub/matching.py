@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from openrlhf_agent.utils.types import Action, RewardSample
 from openrlhf_agent.agentkit.rewards.result_rewards.base import ResultRewardStrategy
@@ -48,20 +48,27 @@ class MatchingReward(ResultRewardStrategy):
 
 @dataclass
 class MathMatchingReward(MatchingReward):
-    """Matching reward that additionally checks symbolic math equality for boxed LaTeX answers."""
+    """Matching reward that also checks symbolic math equivalence for boxed LaTeX answers."""
 
     def score_response(self, response: str, label: Optional[Any]) -> float:
         if label is None:
-            return self.miss_score
+            raise NotImplementedError("label=None is not supported.")
 
-        label = str(label).strip()
-        prediction = response.strip()
-        if not label or not prediction:
-            return self.miss_score
+        labels: Sequence[str]
+        if isinstance(label, str):
+            labels = [label]
+        elif isinstance(label, list):
+            labels = label
+        else:
+            raise NotImplementedError(f"Unsupported label type: {type(label)!r}")
+    
+        resp = response.strip()
+        for gold in labels:
+            try:
+                if grade_answer_verl(resp, gold):
+                    return self.correct_score
+            except Exception:
+                # Be robust to parser/sympy failures on individual labels.
+                continue
 
-        try:
-            is_correct = grade_answer_verl(prediction, label)
-        except Exception:
-            return self.miss_score
-
-        return self.correct_score if is_correct else self.miss_score
+        return self.miss_score

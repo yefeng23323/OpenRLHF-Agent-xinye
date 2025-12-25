@@ -7,18 +7,18 @@ from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 
 
 async def main() -> None:
-    engine = OpenAIEngine(
-        model="qwen3",
-        base_url="http://localhost:8009/v1",
-        api_key="empty",
+    agent_runtime = AgentRuntime(
+        protocol=Qwen3ThinkingProtocol(), # qwen3-thinking
+        engine=OpenAIEngine(
+            model="qwen3",
+            base_url="http://localhost:8009/v1",
+            api_key="empty"
+        ),
+        environment=SingleTurnEnvironment(),
     )
-    env = SingleTurnEnvironment()
-    protocol = Qwen3ThinkingProtocol()
-
-    rt = AgentRuntime(engine, env, protocol)
     messages = [{"role": "user", "content": "Tell me a joke about programming."}]
-    async for step in rt.run_steps(messages):
-        print(step)
+    async for message in agent_runtime.run_steps(messages):
+        print(message)
 
 
 if __name__ == "__main__":

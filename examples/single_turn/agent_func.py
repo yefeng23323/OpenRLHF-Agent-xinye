@@ -6,7 +6,7 @@ from openrlhf_agent.agentkit.rewards import RewardPipeline
 from openrlhf_agent.agentkit.session import AgentSession
 from openrlhf_agent.agentkit.environments import SingleTurnEnvironment
 from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
-from openrlhf_agent.agentkit.rewards.result_rewards import MatchingReward
+from openrlhf_agent.agentkit.rewards.result_rewards import MathMatchingReward
 
 from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
 
@@ -16,7 +16,7 @@ class AgentInstance(AgentInstanceBase):
         environment = SingleTurnEnvironment()
         protocol = Qwen3ThinkingProtocol()
         pipeline = RewardPipeline(
-            result_reward=MatchingReward(correct_score=1.0, miss_score=0.0)
+            result_reward=MathMatchingReward(correct_score=1.0, miss_score=0.0)
         )
         self.session = AgentSession(environment=environment, protocol=protocol, reward_pipeline=pipeline)
 
@@ -31,8 +31,7 @@ class AgentInstance(AgentInstanceBase):
         observation, reward = await self.session.step_from_text(action_text, label=label)
         
         reward = float(reward) if reward is not None else 0.0
-        if reward < -1:
-            reward = -1.0
+        reward = max(reward, -1.0)
 
         done = observation.done
         return {
