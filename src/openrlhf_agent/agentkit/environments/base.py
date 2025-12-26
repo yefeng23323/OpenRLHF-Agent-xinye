@@ -44,11 +44,14 @@ class Environment(ABC):
 
         if call.name not in self._tool_map:
             raise KeyError(f"Unknown tool '{call.name}'.")
+        
         tool = self._tool_map[call.name]
         arguments = call.arguments
-        if not isinstance(arguments, dict):
-            raise TypeError("Tool arguments must be a JSON object.")
-        return await tool.call(context=context, arguments=arguments)
+        
+        if arguments is None or isinstance(arguments, dict):
+            return await tool.call(context=context, arguments=arguments)
+
+        raise TypeError("Tool arguments must be a JSON object.")
 
     def tool_names(self) -> List[str]:
         return list(self._tool_map.keys())
