@@ -36,10 +36,7 @@ class AgentSession:
         self.history = Conversation()
         self._initial_question: List[Message] = []
 
-    def _parse_messages(
-        self,
-        payload: Optional[Union[Sequence[Dict[str, Any]], str]],
-    ) -> List[Message]:
+    def _parse_messages(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]]) -> List[Message]:
         """Reset the chat history and optionally seed prior turns."""
 
         if payload is None:
@@ -58,9 +55,7 @@ class AgentSession:
         
         raise NotImplementedError
 
-    async def initialize(
-        self, payload: Optional[Union[Sequence[Dict[str, Any]], str]] = None
-    ) -> str:
+    async def initialize(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]] = None) -> str:
         """Reset environment state and return the first prompt."""
 
         self.environment.reset_step()

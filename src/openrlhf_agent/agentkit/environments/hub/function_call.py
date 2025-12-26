@@ -13,21 +13,11 @@ from openrlhf_agent.agentkit.tools import CommentaryTool, ToolBase
 
 
 SYSTEM_PROMPT_TEMPLATE = """
-You are a helpful assistant. For each query, adhere to the following process:
-
-**Reasoning & Verification:** First, work through the problem step by step. Use tools **exclusively** to verify specific aspects of your reasoning (e.g., factual accuracy), not to solve the problem itself.
-
-**Final Output:** After verification, output a single, complete answer without any tool call details or intermediate steps. Your response should end with the final solution.
-
-**Communication:** Keep the user informed as you work by providing friendly, action-focused updates about your current actions.
+You are a helpful assistant.
 
 Knowledge cutoff: 2023-06
 Current date: {date}
 """.strip()
-# Suggested rules for the agent:
-# - Use commentary(status=...) to share quick progress updates when your plan changes.
-# - Answer the user with plain text outside tool calls; that finishes the chat.
-# - Tool calls must be JSON objects wrapped in whatever tool-call tags your model expects.
 
 
 class FunctionCallEnvironment(Environment):
