@@ -34,8 +34,7 @@ class AgentInstance(AgentInstanceBase):
         observation, reward = await self.session.step_from_text(action_text, label=label)
         
         reward = float(reward) if reward is not None else 0.0
-        if reward < -1:
-            reward = -1.0
+        reward = max(reward, -1.0)
 
         done = observation.done
         return {
