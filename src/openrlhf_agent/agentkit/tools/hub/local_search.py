@@ -11,7 +11,7 @@ from openrlhf_agent.agentkit.tools import ToolBase
 class LocalSearchTool(ToolBase):
     """Calls a local Search-R1 style retriever and returns formatted passages."""
 
-    name = "local_search"
+    name = "search"
     description = "Searches for information related to `queries` and displays `topn` results."
     parameters: Dict[str, Any] = {
         "type": "object",
@@ -39,18 +39,21 @@ class LocalSearchTool(ToolBase):
         import httpx
         queries = arguments.get("queries", [])
         if not queries:
-            return json.dumps({"ok": False, "error": "queries are required"})
+            return "queries are required"
         max_results = int(arguments.get("topk", 3))
+        
         request_payload = {
             "queries": queries,
             "topk": max_results,
             "return_scores": True,
         }
+        
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.post(self.retriever_url, json=request_payload)
                 resp.raise_for_status()
                 results = [self._passages2string(result) for result in resp.json()['result']]
         except Exception as exc:
-            return json.dumps({"ok": False, "error": f"request failed: {exc}"}, ensure_ascii=False)
-        return json.dumps({"ok": True, "results": results}, ensure_ascii=False)
+            return f"request failed: {exc}"
+        
+        return json.dumps(results, ensure_ascii=False)
