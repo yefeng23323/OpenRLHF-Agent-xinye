@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from openrlhf_agent.utils.types import Action, ToolCall
 from openrlhf_agent.agentkit.environments.base import Environment
-from openrlhf_agent.agentkit.tools import CommentaryTool, ToolBase
+from openrlhf_agent.agentkit.tools import ThinkTool, ToolBase
 
 
 SYSTEM_PROMPT_TEMPLATE = """
@@ -33,7 +33,7 @@ class FunctionCallEnvironment(Environment):
         resolved_prompt = system_prompt or SYSTEM_PROMPT_TEMPLATE.format(
             date=datetime.now().strftime("%Y-%m-%d")
         )
-        tools = tools or [CommentaryTool()]
+        tools = tools or [ThinkTool()]
         super().__init__(
             tools=list(tools),
             system_prompt=resolved_prompt,
