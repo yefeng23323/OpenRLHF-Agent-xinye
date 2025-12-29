@@ -9,20 +9,20 @@ from ..base import ToolBase
 
 
 class ThinkTool(ToolBase):
-    """Hidden planning tool used to capture private notes."""
+    """Hidden planning tool used to capture private note."""
 
     name = "think"
-    description = "Write down private notes before taking a visible action."
+    description = "Write down private note before taking a visible action."
     parameters: Dict[str, object] = {
         "type": "object",
         "properties": {
-            "notes": {
+            "note": {
                 "type": "string",
                 "description": "Short plan or reasoning that stays internal.",
             }
         },
-        "required": ["notes"],
+        "required": ["note"],
     }
 
     async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
-        return json.dumps({"ok": True}, ensure_ascii=False)
+        return ""

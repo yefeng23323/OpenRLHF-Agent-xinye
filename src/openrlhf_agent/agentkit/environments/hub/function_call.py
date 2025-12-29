@@ -9,25 +9,15 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from openrlhf_agent.utils.types import Action, ToolCall
 from openrlhf_agent.agentkit.environments.base import Environment
-from openrlhf_agent.agentkit.tools import CommentaryTool, ToolBase
+from openrlhf_agent.agentkit.tools import ThinkTool, ToolBase
 
 
 SYSTEM_PROMPT_TEMPLATE = """
-You are a helpful assistant. For each query, adhere to the following process:
-
-**Reasoning & Verification:** First, work through the problem step by step. Use tools **exclusively** to verify specific aspects of your reasoning (e.g., factual accuracy), not to solve the problem itself.
-
-**Final Output:** After verification, output a single, complete answer without any tool call details or intermediate steps. Your response should end with the final solution.
-
-**Communication:** Keep the user informed as you work by providing friendly, action-focused updates about your current actions.
+You are a helpful assistant.
 
 Knowledge cutoff: 2023-06
 Current date: {date}
 """.strip()
-# Suggested rules for the agent:
-# - Use commentary(status=...) to share quick progress updates when your plan changes.
-# - Answer the user with plain text outside tool calls; that finishes the chat.
-# - Tool calls must be JSON objects wrapped in whatever tool-call tags your model expects.
 
 
 class FunctionCallEnvironment(Environment):
@@ -43,7 +33,7 @@ class FunctionCallEnvironment(Environment):
         resolved_prompt = system_prompt or SYSTEM_PROMPT_TEMPLATE.format(
             date=datetime.now().strftime("%Y-%m-%d")
         )
-        tools = tools or [CommentaryTool()]
+        tools = tools or [ThinkTool()]
         super().__init__(
             tools=list(tools),
             system_prompt=resolved_prompt,
