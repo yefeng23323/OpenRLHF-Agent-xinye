@@ -8,7 +8,7 @@ from openrlhf_agent.agentkit.environments import SingleTurnEnvironment
 from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.rewards.result_rewards import MathMatchingReward
 
-from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
+from openrlhf.utils.agent import AgentInstanceBase, MultiTurnAgentExecutor
 
 
 class AgentInstance(AgentInstanceBase):
@@ -33,7 +33,7 @@ class AgentInstance(AgentInstanceBase):
         reward = float(reward) if reward is not None else 0.0
         reward = max(reward, -1.0)
 
-        done = observation.done
+        done = True # observation.done
         return {
             "rewards": torch.tensor(reward),
             "scores": torch.tensor(reward),
@@ -47,6 +47,6 @@ class AgentInstance(AgentInstanceBase):
         }
 
 
-class AgentExecutor(AgentExecutorBase):
-    def __init__(self, max_length, llm_engine, hf_tokenizer):
-        super().__init__(AgentInstance, max_length, llm_engine, hf_tokenizer)
+class AgentExecutor(MultiTurnAgentExecutor):
+    def __init__(self):
+        super().__init__(AgentInstance)

@@ -9,7 +9,7 @@ from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.rewards.result_rewards import MathMatchingReward
 from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
-from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
+from openrlhf.utils.agent import MultiTurnAgentExecutor, AgentInstanceBase
 
 
 CUSTOM_SYSTEM_PROMPT = """
@@ -66,6 +66,6 @@ class AgentInstance(AgentInstanceBase):
         }
 
 
-class AgentExecutor(AgentExecutorBase):
-    def __init__(self, max_length, llm_engine, hf_tokenizer):
-        super().__init__(AgentInstance, max_length, llm_engine, hf_tokenizer)
+class AgentExecutor(MultiTurnAgentExecutor):
+    def __init__(self):
+        super().__init__(AgentInstance)
