@@ -8,7 +8,7 @@ from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
 from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.rewards.result_rewards import MatchingReward
 
-from openrlhf.utils.agent import AgentExecutorBase, AgentInstanceBase
+from openrlhf.utils.agent import MultiTurnAgentExecutor, AgentInstanceBase
 
 
 class AgentInstance(AgentInstanceBase):
@@ -61,6 +61,6 @@ class AgentInstance(AgentInstanceBase):
         }
 
 
-class AgentExecutor(AgentExecutorBase):
-    def __init__(self, max_length, llm_engine, hf_tokenizer):
-        super().__init__(AgentInstance, max_length, llm_engine, hf_tokenizer)
+class AgentExecutor(MultiTurnAgentExecutor):
+    def __init__(self):
+        super().__init__(AgentInstance)
