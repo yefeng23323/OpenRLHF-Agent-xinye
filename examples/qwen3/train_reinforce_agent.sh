@@ -14,7 +14,7 @@ export NCCL_SOCKET_TIMEOUT=1800000
 
 MODEL_PATH="Qwen/Qwen3-4B-Instruct-2507"
 SAVE_PATH="${WORK_DIR}/exp/Qwen3-test"
-AGNET_FUNC_PATH="${WORK_DIR}/examples/qwen3/agent_func.py"
+AGENT_FUNC_PATH="${WORK_DIR}/examples/qwen3/agent_func.py"
 DATASET_PATH="{your_dataset_path_here}" # TODO: set your dataset path here
 
 set -x
@@ -67,5 +67,5 @@ ray job submit --address="http://127.0.0.1:8265" \
    --label_key target \
    --normalize_reward \
    --packing_samples \
-   --agent_func_path ${AGNET_FUNC_PATH} \
+   --agent_func_path ${AGENT_FUNC_PATH} \
    --use_tensorboard ${SAVE_PATH}/runs

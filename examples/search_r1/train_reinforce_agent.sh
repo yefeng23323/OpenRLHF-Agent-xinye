@@ -10,7 +10,7 @@ DATASET_PATH="{your_dataset_path_here}" # TODO: set your dataset path here
 SAVE_PATH="${WORK_DIR}/exp/Qwen3-Search-R1"
 
 # Demo for search
-AGNET_FUNC_PATH="${WORK_DIR}/examples/search_r1/agent_func.py"
+AGENT_FUNC_PATH="${WORK_DIR}/examples/search_r1/agent_func.py"
 
 
 CKPT_ARGS=(
