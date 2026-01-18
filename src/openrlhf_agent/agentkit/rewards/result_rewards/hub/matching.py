@@ -23,9 +23,9 @@ class MatchingReward(ResultRewardStrategy):
         if label is None:
             return self.miss_score
 
-        label = str(label).strip()
+        target_label = str(label).strip()
         prediction = response.strip()
-        return self.correct_score if prediction == label else self.miss_score
+        return self.correct_score if prediction == target_label else self.miss_score
 
     async def score(
         self,
@@ -39,11 +39,11 @@ class MatchingReward(ResultRewardStrategy):
         if label is None:
             return self.miss_score
 
-        response = self.extract_final_response(action)
-        if not response:
+        final_response = self.extract_final_response(action)
+        if not final_response:
             return self.miss_score
 
-        return self.score_response(response, label)
+        return self.score_response(final_response, label)
 
 
 @dataclass
@@ -54,18 +54,18 @@ class MathMatchingReward(MatchingReward):
         if label is None:
             raise NotImplementedError("label=None is not supported.")
 
-        labels: Sequence[str]
+        candidate_labels: Sequence[str]
         if isinstance(label, str):
-            labels = [label]
-        elif isinstance(label, list):
-            labels = label
+            candidate_labels = [label]
+        elif isinstance(label, Sequence):
+            candidate_labels = list(label)
         else:
             raise NotImplementedError(f"Unsupported label type: {type(label)!r}")
     
-        resp = response.strip()
-        for gold in labels:
+        response_text = response.strip()
+        for gold_label in candidate_labels:
             try:
-                if grade_answer_verl(resp, gold):
+                if grade_answer_verl(response_text, gold_label):
                     return self.correct_score
             except Exception:
                 # Be robust to parser/sympy failures on individual labels.

@@ -101,4 +101,3 @@ curl -X POST "http://localhost:8000/retrieve" \
 ```
 
 If results return normally, the **Search-R1 local dense retriever is ready** 🚀
-

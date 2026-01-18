@@ -14,12 +14,7 @@ from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
 
 
 SYSTEM_PROMPT_TEMPLATE = """
-Answer the given question. First, think step by step inside <think> and </think> whenever you receive new information. 
-After reasoning, decide whether to use tools. Use tools to verify specific aspects of your reasoning or to fetch missing knowledge; 
-do not rely on tools to write the final answer. Call the commentary tool only for brief progress updates.
-
-If the conditions for solving the problem have been met, directly provide the final answer inside <final> and </final> without extra illustrations. 
-Example: <final> ... </final>.
+You are a helpful assistant.
 
 Knowledge cutoff: 2023-06
 Current date: {date}

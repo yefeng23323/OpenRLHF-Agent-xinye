@@ -1,38 +1,30 @@
-"""Friendly commentary tool the model uses to keep the user updated."""
+"""Commentary tool for short progress updates."""
 
 from __future__ import annotations
 
 import json
 from typing import Any, Dict
 
-from ..base import ToolBase
+from openrlhf_agent.agentkit.tools import ToolBase
 
 
 class CommentaryTool(ToolBase):
-    """Tool for short progress updates, not for solving the task."""
+    """Send a brief status update separate from the final answer."""
 
-    # Tool name used in tool_calls
     name = "commentary"
-
-    # High-level description used by the model to decide when to call it
     description = (
-        "Send a brief, friendly status update about what you are doing. "
-        "Use this tool only to describe your current actions or progress, "
-        "not to give the final answer or important content."
+        "Send a short status update about current actions or progress. "
+        "Do not use this tool for the final answer or key content."
     )
-
-    # JSON schema for arguments
     parameters: Dict[str, Any] = {
         "type": "object",
         "properties": {
             "message": {
                 "type": "string",
                 "description": (
-                    "A short status message about your current action, e.g. "
-                    "\"Thinking through the steps\", "
-                    "\"Checking recent data\", "
-                    "\"Reviewing your code for bugs\". "
-                    "Do NOT include the final answer, key conclusions, or long explanations here."
+                    "Short status message about the current action, e.g. "
+                    "\"Checking recent data\", \"Reviewing code\". "
+                    "Do not include final answers or long explanations."
                 ),
             },
         },
@@ -40,6 +32,4 @@ class CommentaryTool(ToolBase):
     }
 
     async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
-        # The backend does nothing special, it just confirms the update.
-        # The user-facing value is the message itself in the assistant step.
         return json.dumps({"ok": True}, ensure_ascii=False)

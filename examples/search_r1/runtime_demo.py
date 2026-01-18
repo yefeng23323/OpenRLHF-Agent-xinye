@@ -4,18 +4,17 @@ from openrlhf_agent.backends import OpenAIEngine
 from openrlhf_agent.agentkit.runtime import AgentRuntime
 from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
 from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
-from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
+from openrlhf_agent.agentkit.tools import LocalSearchTool
 
 
 CUSTOM_SYSTEM_PROMPT = """
-Solve the question step by step. When you receive new information, think through it in detail inside <think>...</think> before continuing.
-After reasoning, decide whether any tools are needed. Use tools only to verify specific parts of your reasoning or to fetch missing information—not to produce the final answer. For brief progress updates, use the commentary tool sparingly.
+You are a helpful assistant.
+
+Your Knowledge cutoff: 2023-06
+Current date: {date}
 
 Work systematically and explain steps clearly. Format the final response as:
 Answer: \\boxed{{$Answer}}
-
-Knowledge cutoff: 2023-06
-Current date: {date}
 """.strip()
 
 
@@ -30,12 +29,11 @@ async def main() -> None:
         environment=FunctionCallEnvironment(
             system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
             tools=[
-                CommentaryTool(),
                 LocalSearchTool(base_url="http://localhost:8000/retrieve"),
             ],
         ),
     )
-    messages = [{"role": "user", "content": "Please use the commentary function to share your thoughts, and also help me search what Python is?"}]
+    messages = [{"role": "user", "content": "Please use the commentary tool to share your thoughts, and use local_search to find what Python is."}]
     async for message in agent_runtime.run_steps(messages):
         print(message)
 

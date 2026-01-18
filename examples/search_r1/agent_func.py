@@ -7,20 +7,19 @@ from openrlhf_agent.agentkit.session import AgentSession
 from openrlhf_agent.agentkit.environments import FunctionCallEnvironment
 from openrlhf_agent.agentkit.protocols import Qwen3ThinkingProtocol
 from openrlhf_agent.agentkit.rewards.result_rewards import MathMatchingReward
-from openrlhf_agent.agentkit.tools import CommentaryTool, LocalSearchTool
+from openrlhf_agent.agentkit.tools import LocalSearchTool
 
 from openrlhf.utils.agent import MultiTurnAgentExecutor, AgentInstanceBase
 
 
 CUSTOM_SYSTEM_PROMPT = """
-Solve the question step by step. When you receive new information, think through it in detail inside <think>...</think> before continuing.
-After reasoning, decide whether any tools are needed. Use tools only to verify specific parts of your reasoning or to fetch missing information—not to produce the final answer. For brief progress updates, use the commentary tool sparingly.
+You are a helpful assistant.
+
+Your Knowledge cutoff: 2023-06
+Current date: {date}
 
 Work systematically and explain steps clearly. Format the final response as:
 Answer: \\boxed{{$Answer}}
-
-Knowledge cutoff: 2023-06
-Current date: {date}
 """.strip()
 
 
@@ -29,7 +28,6 @@ class AgentInstance(AgentInstanceBase):
         environment = FunctionCallEnvironment(
             system_prompt=CUSTOM_SYSTEM_PROMPT.format(date=datetime.now().strftime("%Y-%m-%d")),
             tools=[
-                CommentaryTool(),
                 LocalSearchTool(base_url="http://localhost:8000/retrieve"),
             ],
         )
