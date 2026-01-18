@@ -50,4 +50,4 @@ exp/
 *.bin
 
 # Project-specific demos
-examples/hidden/
+examples/experimental/
