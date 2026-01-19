@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 from openrlhf_agent.utils.types import Action, ToolCall
 from openrlhf_agent.agentkit.tools import ToolBase
@@ -68,7 +68,7 @@ class Environment(ABC):
         """Return the system prompt used for the agent."""
         return self._system_prompt
 
-    def reset_step(self) -> None:
+    def reset(self) -> None:
         self._step_index = 0
     
     @property

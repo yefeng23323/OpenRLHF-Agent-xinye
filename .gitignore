@@ -50,4 +50,4 @@ exp/
 *.bin
 
 # Project-specific demos
-examples/deepresearch/
+examples/experimental/

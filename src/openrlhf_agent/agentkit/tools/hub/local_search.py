@@ -1,59 +1,104 @@
-"""Search tool that calls a local retrieval server and formats passages."""
+"""Local search tool backed by a retriever and formatted output."""
 
 from __future__ import annotations
 
-import json
-from typing import Any, Dict
+from typing import Any, Dict, Mapping, Sequence
 
 from openrlhf_agent.agentkit.tools import ToolBase
 
 
 class LocalSearchTool(ToolBase):
-    """Calls a local Search-R1 style retriever and returns formatted passages."""
+    """Query a local retriever and return formatted passages."""
 
-    name = "search"
-    description = "Searches for information related to `queries` and displays `topn` results."
+    name = "local_search"
+    description = "Search a local retriever and return up to `topk` formatted passages."
+
+    MIN_TOPK = 1
+    MAX_TOPK = 10
+    DEFAULT_TOPK = 3
+
     parameters: Dict[str, Any] = {
         "type": "object",
         "properties": {
-            "queries": {"type": "array", "items": {"type": "string"}, "description": "List of queries to send to the retriever."},
-            "topk": {"type": "integer", "description": "How many passages to return for each query.", "minimum": 1, "maximum": 10, "default": 3},
+            "query": {"type": "string", "description": "Search query."},
+            "topk": {
+                "type": "integer",
+                "description": "Maximum number of passages to return.",
+                "minimum": MIN_TOPK,
+                "maximum": MAX_TOPK,
+                "default": DEFAULT_TOPK,
+            },
         },
-        "required": ["queries"],
+        "required": ["query"],
     }
 
     def __init__(self, *, base_url: str, timeout: float = 10.0):
         self.retriever_url = base_url
-        self.timeout = timeout
+        self.timeout = float(timeout)
 
-    def _passages2string(self, retrieval_result):
-        format_reference = ''
-        for idx, doc_item in enumerate(retrieval_result):
-            content = doc_item['document']['contents']
-            title = content.split("\n")[0]
-            text = "\n".join(content.split("\n")[1:])
-            format_reference += f"Doc {idx+1}(Title: {title}) {text}\n"
-        return format_reference
+    @classmethod
+    def _parse_topk(cls, value: Any) -> int:
+        try:
+            topk = int(value)
+        except (TypeError, ValueError):
+            topk = cls.DEFAULT_TOPK
+        return max(cls.MIN_TOPK, min(cls.MAX_TOPK, topk))
+
+    def _format_passages(self, passages: Sequence[Mapping[str, Any]]) -> str:
+        """Format a list of retrieved passages into a readable string."""
+        blocks: list[str] = []
+
+        for i, passage in enumerate(passages, start=1):
+            # Passages may contain {"document": {"contents": "..."}}, ignore any "score" fields.
+            document = passage.get("document") or {}
+            content = str(document.get("contents") or "").strip()
+
+            header = f"Doc {i}"
+            if not content:
+                blocks.append(header)
+                continue
+
+            lines = content.splitlines()
+            title = lines[0].strip() if lines else ""
+            body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+
+            if title:
+                header += f" — {title}"
+            blocks.append(f"{header}\n{body}".rstrip() if body else header)
+
+        return "\n\n".join(blocks).strip()
 
     async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
         import httpx
-        queries = arguments.get("queries", [])
-        if not queries:
-            return "queries are required"
-        max_results = int(arguments.get("topk", 3))
-        
-        request_payload = {
-            "queries": queries,
-            "topk": max_results,
-            "return_scores": True,
-        }
-        
+
+        query = str(arguments.get("query", "")).strip()
+        if not query:
+            return "Missing required argument: `query`."
+
+        topk = self._parse_topk(arguments.get("topk"))
+
+        request_payload = {"queries": [query], "topk": topk, "return_scores": True}
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(self.retriever_url, json=request_payload)
-                resp.raise_for_status()
-                results = [self._passages2string(result) for result in resp.json()['result']]
+                response = await client.post(self.retriever_url, json=request_payload)
+                response.raise_for_status()
+                response_data = response.json()
+
+            results = response_data.get("result")
+            if not isinstance(results, list) or not results:
+                return "No results returned by retriever."
+
+            # Server usually returns: {"result": [[...docs...]]} for one query
+            passages = results[0]
+            if not isinstance(passages, list):
+                return "Unexpected retriever response format: `result[0]` is not a list."
+
+            return self._format_passages(passages) or "No passages found."
+
+        except httpx.TimeoutException:
+            return f"Request timed out after {self.timeout:.1f}s."
+        except httpx.HTTPStatusError as exc:
+            return f"Request failed with HTTP {exc.response.status_code}."
         except Exception as exc:
-            return f"request failed: {exc}"
-        
-        return json.dumps(results, ensure_ascii=False)
+            return f"Request failed: {exc}"

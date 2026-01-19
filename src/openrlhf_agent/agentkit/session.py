@@ -58,7 +58,7 @@ class AgentSession:
     async def initialize(self, payload: Optional[Union[Sequence[Dict[str, Any]], str]] = None) -> str:
         """Reset environment state and return the first prompt."""
 
-        self.environment.reset_step()
+        self.environment.reset()
 
         self._initial_question = self._parse_messages(payload)
 
@@ -96,6 +96,8 @@ class AgentSession:
 
         # Observation messages
         obs_list, done = await self.environment.step(action)
+        # TODO: DEBUG line
+        # assert (action.tool_calls is None and len(obs_list) == 0) or (action.tool_calls is None and len(obs_list) == 1 and parse_error) or (action.tool_calls is not None and len(obs_list) == len(action.tool_calls)), f"call: {action.tool_calls}, obs: {obs_list}"
 
         obs_messages = [Message(role="tool", content=obs) for obs in obs_list]
         if obs_messages:

@@ -1,24 +1,21 @@
-"""Built-in hidden think tool."""
+"""Built-in think tool."""
 
 from __future__ import annotations
 
-import json
 from typing import Any, Dict
 
-from ..base import ToolBase
+from openrlhf_agent.agentkit.tools import ToolBase
 
 
 class ThinkTool(ToolBase):
-    """Hidden planning tool used to capture private note."""
-
     name = "think"
-    description = "Write down private note before taking a visible action."
+    description = "Structured thinking tool for the model to capture reasoning, plans, and intermediate calculations."
     parameters: Dict[str, object] = {
         "type": "object",
         "properties": {
             "note": {
                 "type": "string",
-                "description": "Short plan or reasoning that stays internal.",
+                "description": "step-by-step reasoning, a concise plan, and intermediate calculations.",
             }
         },
         "required": ["note"],

@@ -5,30 +5,30 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
-from ..base import ToolBase
+from openrlhf_agent.agentkit.tools import ToolBase
 
 
 class FinalTool(ToolBase):
     """Explicit final-answer tool for structured outputs."""
 
     name = "final"
-    description = "Return the final answer that will be shown to the user."
+    description = "Return the final response that will be shown to the user."
     parameters: Dict[str, Any] = {
         "type": "object",
         "properties": {
-            "answer": {
+            "response": {
                 "type": "string",
-                "description": "Plain-text answer for the user.",
-            }
+                "description": "Final response to the user.",
+            },
         },
-        "required": ["answer"],
+        "required": ["response"],
     }
 
     async def call(self, *, context: Dict[str, Any], arguments: Dict[str, Any]) -> str:
-        answer = str(arguments.get("answer", "")).strip()
-        if not answer:
+        response = str(arguments.get("response", "")).strip()
+        if not response:
             return json.dumps(
-                {"ok": False, "error": "answer must be a non-empty string."},
+                {"ok": False, "error": "response must be a non-empty string."},
                 ensure_ascii=False,
             )
-        return json.dumps({"ok": True, "answer": answer}, ensure_ascii=False)
+        return json.dumps({"ok": True, "response": response}, ensure_ascii=False)
